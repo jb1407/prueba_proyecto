@@ -9,7 +9,7 @@ LIBS = -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
 TARGET = game
 
 # Archivos fuente del proyecto (aquí es donde agregas tus módulos nuevos)
-SRCS = main.cpp EnemyAI.cpp
+SRCS = main.cpp enemyAI.cpp
 OBJS = $(SRCS:.cpp=.o)
 
 # Regla principal por defecto

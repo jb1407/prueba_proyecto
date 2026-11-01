@@ -1,5 +1,4 @@
 #ifndef PLAYER_HPP
-#ifndef PLAYER_HPP
 #define PLAYER_HPP
 
 class Player {

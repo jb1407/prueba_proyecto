@@ -6,6 +6,15 @@ Player::Player(float startX, float startY) {
     speed = 5.0f; // Velocidad de desplazamiento
 }
 
+void Player::Update() {
+    // Aquí es donde vinculamos las teclas del teclado con tus métodos de movimiento
+    // Puedes usar tanto las flechas como WASD
+    if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A))  moverIzquierda();
+    if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) moverDerecha();
+    if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W))     moverArriba();
+    if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S))   moverAbajo();
+}
+
 void Player::moverIzquierda() {
     x -= speed;
 }
@@ -28,4 +37,8 @@ float Player::getX() const {
 
 float Player::getY() const {
     return y;
+}
+
+Vector2 Player::getPosition() const {
+    return { x, y };
 }

@@ -52,7 +52,7 @@ private:
     Vector2 size;
     int health;
     int maxHealth;
-    
+    float damageMultiplier; // NUEVO: Multiplicador de resistencia/daño
     AIAction currentAction;
     
     float attackRange;
@@ -67,6 +67,9 @@ private:
 
     int playerAttackCounter;
     Difficulty currentDifficulty;
+
+    float reactionTimer = 0.0f;
+    float reactionDelay = 0.2f; // Tiempo de retraso en segundos (ajustable por dificultad)
 
     // --- EL ÁRBOL USANDO MTreeNode DE DESIGNAR ---
     MTreeNode<DecisionKey>* decisionTreeRoot;
@@ -92,6 +95,11 @@ public:
         return { position.x, position.y, size.x, size.y }; 
     }
     float GetAttackRange() const { return attackRange; }
+    float GetHealth() const { return health; }
+    float GetMaxHealth() const { return maxHealth; }
+
+    void TakeDamage(float amount);
+    bool IsDead() const { return health <= 0.0f; }
 };
 
 #endif

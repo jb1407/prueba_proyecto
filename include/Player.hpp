@@ -1,7 +1,8 @@
 #ifndef PLAYER_HPP
 #define PLAYER_HPP
 
-#include "raylib.h" // Necesario para Vector2 y funciones de teclado
+#include "raylib.h"
+#include "Mechanics.hpp" // Esto ya incluye LoadAssets.hpp automáticamente
 
 class Player {
 private:
@@ -11,12 +12,21 @@ private:
     float health;
     float maxHealth;
 
+    // --- Nuevos atributos para las animaciones y mecánicas ---
+    MoveSetBase currentMove;
+    CombatManager combatManager;
+    bool flipX;
+
+    // --- Atributos para el movimiento de Backward (esquive con impulso) ---
+    Vector2 dodgeDir;
+    float dodgeSpeed;
+
 public:
     // Constructor
     Player(float startX, float startY);
 
     // Métodos principales
-    void Update();
+    void Update(AssetManager& assetManager);
     void TakeDamage(float amount);
     bool IsDead() const { return health <= 0.0f; }
 
@@ -25,7 +35,6 @@ public:
     float getY() const { return position.y; }
     Vector2 getPosition() const { return position; }
     
-    // ¡El codiciado GetRectangle idéntico al del EnemyAI!
     Rectangle GetRectangle() const { 
         return { position.x, position.y, size.x, size.y }; 
     }

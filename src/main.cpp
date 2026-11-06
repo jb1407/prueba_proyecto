@@ -1,71 +1,88 @@
 #include "raylib.h"
-#include "menu.hpp"
-// #include "Player.hpp" // Tus otros headers de combate y jugador
+#include "LoadAssets.hpp"
+#include "Mechanics.hpp"
+#include "Player.hpp"
 
-int main()
-{
-    // 1. Inicializar ventana
+int main() {
+    // 1. Inicializar la ventana de Raylib
     const int screenWidth = 800;
-    const int screenHeight = 450;
-    //SetConfigFlags(FLAG_WINDOW_HIGHDPI);
-    InitWindow(screenWidth, screenHeight, "Arena Fighter 2D");
+    const int screenHeight = 600;
+    InitWindow(screenWidth, screenHeight, "Arena Fighter - Prueba de Integracion");
     SetTargetFPS(60);
 
-    // Variables de estado iniciales
-    GameScreen currentScreen = SCREEN_MAIN_MENU;
-    int selectedDifficulty = 0; // 0: Fácil, 1: Medio, 2: Difícil
+    // 2. Inicializar el administrador de assets y cargar la tabla hash
+    AssetManager assetManager;
+    LoadAssetsToTable(assetManager);
 
-    // Bucle principal del juego
-    while (!WindowShouldClose())
-    {
+    // 3. Crear una instancia del jugador en el centro de la pantalla
+    // (Pasamos la posición inicial X y Y)
+    Player player(screenWidth / 2.0f - 20.0f, screenHeight / 2.0f - 20.0f);
 
-        // ==========================================
-        // PASO 1: ACTUALIZAR LÓGICA SEGÚN LA PANTALLA
-        // ==========================================
-        if (currentScreen == SCREEN_GAME_PLAYING)
-        {
-            // Marcador de posición temporal (Placeholder) solo para probar el menú
-            BeginDrawing();
-            ClearBackground(DARKGRAY);
-            DrawText("¡AQUI IRA LA PELEA CONTRA EL BOT!", 200, 180, 20, RAYWHITE);
-            DrawText("Presiona ESC para volver al menu principal", 220, 220, 14, LIGHTGRAY);
-            EndDrawing();
+    // 4. Bucle principal del juego
+    while (!WindowShouldClose()) {
+        
+        // --- Actualización de lógica e inputs ---
+        // El jugador lee el teclado, actualiza su posición y le pide al CombatManager 
+        // que dibuje la animación correspondiente usando la tabla hash.
+        player.Update(assetManager);
 
-            // Atajo temporal para regresar al menú con ESC
-            if (IsKeyPressed(KEY_ESCAPE))
-            {
-                currentScreen = SCREEN_MAIN_MENU;
-            }
-        }
-        else
-        {
-            // Aquí corre la lógica visual y de clics del menú de tu compañera
-            ActualizarMenu(&currentScreen, &selectedDifficulty);
-
-            BeginDrawing();
-            DibujarMenu(currentScreen, selectedDifficulty);
-            EndDrawing();
-        }
-
-        // ==========================================
-        // PASO 2: RENDERIZAR / DIBUJAR EN PANTALLA
-        // ==========================================
+        // --- Dibujado en pantalla ---
         BeginDrawing();
-        ClearBackground(BLACK);
+        ClearBackground(DARKGRAY);
 
-        if (currentScreen == SCREEN_GAME_PLAYING)
-        {
-            // --- DIBUJAR LA ARENA Y LOS COMBATIENTES ---
-            DrawText("¡COMBATE EN CURSO!", 250, 200, 20, GREEN);
-            DrawText("Presiona ESC para volver al menu", 230, 240, 14, GRAY);
-            // DibujarPlayer();
-            // DibujarEnemigo();
-        }
-        else
-        {
-            // Dibujar las pantallas del menú hechas por tu compañera
-            DibujarMenu(currentScreen, selectedDifficulty);
-        }
+        // Texto de guía en la interfaz
+        DrawText("Usa W, A, S, D para moverte y ESPACIO para golpear", 20, 20, 18, LIGHTGRAY);
+        
+        // Opcional: Dibujar el rectángulo de colisión del jugador para depurar
+        DrawRectangleLinesEx(player.GetRectangle(), 1, GREEN);
+
+        EndDrawing();
+    }
+
+    // 5. Cierre de la aplicación
+    // Nota: El destructor de AssetManager (~AssetManager) se encargará 
+    // automáticamente de liberar las texturas de la GPU al salir del ámbito.
+    CloseWindow();
+
+    return 0;
+}
+
+/*
+int main() {
+    const int screenWidth = 800;
+    const int screenHeight = 600;
+
+    InitWindow(screenWidth, screenHeight, "Prueba Aislada - Rectángulos y Colisiones");
+    SetTargetFPS(60);
+
+    // Posiciones e instancias básicas usando solo rectángulos de Raylib
+    Vector2 playerPos = { 200.0f, 300.0f };
+    Vector2 playerSize = { 40.0f, 40.0f };
+    float playerSpeed = 4.0f;
+
+    EnemyAI enemy(500.0f, 300.0f, Difficulty::MEDIUM);
+
+    while (!WindowShouldClose()) {
+        // Movimiento básico de prueba
+        if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) playerPos.x += playerSpeed;
+        if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) playerPos.x -= playerSpeed;
+        if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) playerPos.y -= playerSpeed;
+        if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) playerPos.y += playerSpeed;
+
+        bool isPlayerAttacking = IsKeyPressed(KEY_SPACE);
+        enemy.Update(playerPos, isPlayerAttacking, screenWidth, screenHeight);
+
+        BeginDrawing();
+        ClearBackground(GRAY);
+
+        DrawText("PRUEBA DE RECTÁNGULOS", 10, 10, 20, YELLOW);
+        DrawText("Flechas/WASD: Mover cuadro | SPACE: Simular Ataque", 10, 35, 16, LIGHTGRAY);
+
+        // Dibujar jugador como rectángulo azul
+        DrawRectangleV(playerPos, playerSize, BLUE);
+
+        // Dibujar enemigo (utiliza su propio método Draw)
+        enemy.Draw();
 
         EndDrawing();
     }
@@ -73,3 +90,4 @@ int main()
     CloseWindow();
     return 0;
 }
+*/

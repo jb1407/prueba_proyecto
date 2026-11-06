@@ -1,9 +1,9 @@
-#ifndef ENEMY_AI_HPP
-#define ENEMY_AI_HPP
+#ifndef ENEMYAI_HPP
+#define ENEMYAI_HPP
 
 #include <raylib.h>
 #include <functional>
-#include "nodesdef.hpp" // Ajusta la ruta según donde tengas tu librería
+#include "mtreenode.hpp" // Ajusta la ruta según donde tengas tu librería
 
 using namespace Designar;
 

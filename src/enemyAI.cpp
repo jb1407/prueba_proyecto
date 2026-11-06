@@ -5,20 +5,38 @@
 EnemyAI::EnemyAI(float startX, float startY, Difficulty diff) {
     position = { startX, startY };
     initialPosition = position;
-    size = { 50.0f, 50.0f };
+    size = { 40.0f, 40.0f };
     currentDifficulty = diff;
-
-    // Ajustar velocidad base según la dificultad
-    if (diff == Difficulty::EASY) {
-        speed = { 1.8f, 1.8f };
-    } else if (diff == Difficulty::MEDIUM) {
-        speed = { 2.5f, 2.5f };
-    } else if (diff == Difficulty::HARD) {
-        speed = { 3.5f, 3.5f }; // Bot mucho más rápido y letal
-    }
-
     health = 100;
     maxHealth = 100;
+
+    switch (diff) {
+        case Difficulty::EASY:
+            speed = { 1.8f, 1.8f };
+            reactionDelay = 0.35f;
+            attackRange = 50.0f;     // Rango de ataque cuerpo a cuerpo para fácil
+            alertRange = 250.0f;     // Rango de visión de la IA
+            damageMultiplier = 1.25f;
+            break;
+
+        case Difficulty::MEDIUM:
+            speed = { 2.5f, 2.5f };
+            reactionDelay = 0.25f;
+            attackRange = 60.0f;
+            alertRange = 200.0f;
+            damageMultiplier = 1.00f;
+
+            break;
+
+        case Difficulty::HARD:
+            speed = { 3.5f, 3.5f };
+            reactionDelay = 0.15f;
+            attackRange = 70.0f;
+            alertRange = 150.0f;     // Un bot más peligroso te detecta desde más lejos
+            damageMultiplier = 0.75f;
+            break;
+    }
+
     currentAction = AIAction::IDLE;
     
     patrolCenter = initialPosition;
@@ -222,6 +240,54 @@ void EnemyAI::ClampToScreen(int screenWidth, int screenHeight) {
 
 void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenWidth, int screenHeight) {
     EvaluateTree(playerPosition, isPlayerAttacking);
+    // 1. Calculamos la distancia actual entre el bot y el jugador
+    float distanceToPlayer = std::hypot(playerPosition.x - position.x, playerPosition.y - position.y);
+
+    // Si estamos dentro del rango de ataque:
+    if (distanceToPlayer <= attackRange) {
+    
+    // Dependiendo de la dificultad, el bot elige el tipo de ataque
+    if (currentDifficulty == Difficulty::HARD) {
+        // En difícil, el bot tiene probabilidad de soltar un ataque pesado (más letal)
+        // O si prefiere ataques rápidos según la situación:
+        currentAction = (rand() % 2 == 0) ? AIAction::ATTACK_HEAVY : AIAction::ATTACK_LIGHT;
+    } else {
+        // En fácil o medio, tiende más a usar el ataque ligero
+        currentAction = AIAction::ATTACK_LIGHT;
+    }
+
+    } else if (distanceToPlayer <= alertRange) {
+        currentAction = AIAction::APPROACH;
+    } else {
+        currentAction = AIAction::IDLE;
+    }
+
+    // 2. Definimos el rango donde el ataque del jugador realmente nos puede golpear (ej. 100 píxeles)
+    float attackThreatRange = 100.0f; 
+
+    // 3. Modificamos la condición para que el bot solo reaccione si ATACA y está CERCA
+    if (isPlayerAttacking && distanceToPlayer <= attackThreatRange) {
+        reactionTimer += GetFrameTime();
+        if (reactionTimer >= reactionDelay) {    
+        currentAction = AIAction::BLOCK;
+        reactionTimer = 0.0f;
+        }
+    } else {
+        // Si está lejos o no ataca, el temporizador se reinicia
+        reactionTimer = 0.0f;
+    }
+    if (isPlayerAttacking) {
+        reactionTimer += GetFrameTime();
+        
+        // El bot esperará el tiempo exacto que dictó su dificultad antes de reaccionar
+        if (reactionTimer >= reactionDelay) {
+            currentAction = AIAction::BLOCK; // O el nombre del estado de bloqueo que tengas
+            // Lógica de bloqueo o defensa
+            reactionTimer = 0.0f;
+        }
+    } else {
+        reactionTimer = 0.0f;
+    }
 
     switch (currentAction) {
         case AIAction::APPROACH: {
@@ -274,7 +340,18 @@ void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenW
     ClampToScreen(screenWidth, screenHeight);
 }
 
-void EnemyAI::Draw() {
+void EnemyAI::TakeDamage(float amount) {
+    // Calculamos el daño real aplicando el multiplicador de la dificultad
+    float finalDamage = amount * damageMultiplier;
+    
+    health -= finalDamage;
+    
+    if (health < 0.0f) {
+        health = 0.0f; // Evitamos números negativos
+    }
+}
+
+/*void EnemyAI::Draw() {
     Color botColor = RED;
     const char* actionText = "PATRULLANDO";
 
@@ -284,4 +361,4 @@ void EnemyAI::Draw() {
     else if (currentAction == AIAction::BLOCK) { actionText = "BLOQUEANDO"; botColor = BLUE; }
 
     DrawRectangleV(position, size, botColor);
-}
+}*/

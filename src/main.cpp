@@ -1,46 +1,71 @@
 #include "raylib.h"
-#include "Player.hpp"
-#include "enemyAI.hpp"
+#include "menu.hpp"
+// #include "Player.hpp" // Tus otros headers de combate y jugador
 
-int main() {
-    // 1. Inicializar la ventana y la tasa de refresco
+int main()
+{
+    // 1. Inicializar ventana
     const int screenWidth = 800;
     const int screenHeight = 450;
-    InitWindow(screenWidth, screenHeight, "Arena Fighter 2D - Test Integración");
+    //SetConfigFlags(FLAG_WINDOW_HIGHDPI);
+    InitWindow(screenWidth, screenHeight, "Arena Fighter 2D");
     SetTargetFPS(60);
 
-    // 2. Instanciar al jugador y al bot
-    Player player(150.0f, 300.0f);
-    EnemyAI enemy(600.0f, 300.0f, Difficulty::MEDIUM);
+    // Variables de estado iniciales
+    GameScreen currentScreen = SCREEN_MAIN_MENU;
+    int selectedDifficulty = 0; // 0: Fácil, 1: Medio, 2: Difícil
 
-    // 3. Bucle principal del juego
-    while (!WindowShouldClose()) {
-        
-        // --- ACTUALIZACIÓN DE LÓGICA ---
-        player.Update();
+    // Bucle principal del juego
+    while (!WindowShouldClose())
+    {
 
-        // Actualizamos la IA pasándole:
-        // 1. La posición del jugador
-        // 2. Si el jugador está atacando (le pasamos false por ahora)
-        // 3. El ancho y alto de la pantalla para los límites
-        enemy.Update(player.getPosition(), false, screenWidth, screenHeight);
+        // ==========================================
+        // PASO 1: ACTUALIZAR LÓGICA SEGÚN LA PANTALLA
+        // ==========================================
+        if (currentScreen == SCREEN_GAME_PLAYING)
+        {
+            // Marcador de posición temporal (Placeholder) solo para probar el menú
+            BeginDrawing();
+            ClearBackground(DARKGRAY);
+            DrawText("¡AQUI IRA LA PELEA CONTRA EL BOT!", 200, 180, 20, RAYWHITE);
+            DrawText("Presiona ESC para volver al menu principal", 220, 220, 14, LIGHTGRAY);
+            EndDrawing();
 
-        // --- RENDERIZADO (DIBUJO) ---
+            // Atajo temporal para regresar al menú con ESC
+            if (IsKeyPressed(KEY_ESCAPE))
+            {
+                currentScreen = SCREEN_MAIN_MENU;
+            }
+        }
+        else
+        {
+            // Aquí corre la lógica visual y de clics del menú de tu compañera
+            ActualizarMenu(&currentScreen, &selectedDifficulty);
+
+            BeginDrawing();
+            DibujarMenu(currentScreen, selectedDifficulty);
+            EndDrawing();
+        }
+
+        // ==========================================
+        // PASO 2: RENDERIZAR / DIBUJAR EN PANTALLA
+        // ==========================================
         BeginDrawing();
-        ClearBackground(RAYWHITE);
+        ClearBackground(BLACK);
 
-        // Suelo temporal de referencia
-        DrawRectangle(0, 360, screenWidth, 90, DARKGRAY);
-
-        // Dibujar al jugador (Azul)
-        DrawRectangle((int)player.getX(), (int)player.getY(), 40, 60, BLUE);
-
-        // Dibujar al Bot (Rojo) usando directamente el Rectangle que devuelve su método GetRectangle()
-        DrawRectangleRec(enemy.GetRectangle(), RED);
-
-        // Textos informativos
-        DrawText("Usa las Flechas o WASD para mover al Jugador", 20, 20, 18, DARKGRAY);
-        DrawText("Jugador = Azul | Bot = Rojo", 20, 45, 14, GRAY);
+        if (currentScreen == SCREEN_GAME_PLAYING)
+        {
+            // --- DIBUJAR LA ARENA Y LOS COMBATIENTES ---
+            DrawText("¡COMBATE EN CURSO!", 250, 200, 20, GREEN);
+            DrawText("Presiona ESC para volver al menu", 230, 240, 14, GRAY);
+            // DibujarPlayer();
+            // DibujarEnemigo();
+        }
+        else
+        {
+            // Dibujar las pantallas del menú hechas por tu compañera
+            DibujarMenu(currentScreen, selectedDifficulty);
+        }
 
         EndDrawing();
     }

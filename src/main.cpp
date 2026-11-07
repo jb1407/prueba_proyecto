@@ -2,6 +2,7 @@
 #include "LoadAssets.hpp"
 #include "Mechanics.hpp"
 #include "Player.hpp"
+#include "enemyAI.hpp"
 
 int main() {
     // 1. Inicializar la ventana de Raylib
@@ -47,8 +48,7 @@ int main() {
     return 0;
 }
 
-/*
-int main() {
+/*int main() {
     const int screenWidth = 800;
     const int screenHeight = 600;
 
@@ -89,5 +89,4 @@ int main() {
 
     CloseWindow();
     return 0;
-}
-*/
+}*/

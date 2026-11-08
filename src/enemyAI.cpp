@@ -239,56 +239,10 @@ void EnemyAI::ClampToScreen(int screenWidth, int screenHeight) {
 }
 
 void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenWidth, int screenHeight) {
+    // 1. Dejar que el Árbol de Decisión mande y determine la acción actual según las condiciones del árbol
     EvaluateTree(playerPosition, isPlayerAttacking);
-    // 1. Calculamos la distancia actual entre el bot y el jugador
-    float distanceToPlayer = std::hypot(playerPosition.x - position.x, playerPosition.y - position.y);
 
-    // Si estamos dentro del rango de ataque:
-    if (distanceToPlayer <= attackRange) {
-    
-    // Dependiendo de la dificultad, el bot elige el tipo de ataque
-    if (currentDifficulty == Difficulty::HARD) {
-        // En difícil, el bot tiene probabilidad de soltar un ataque pesado (más letal)
-        // O si prefiere ataques rápidos según la situación:
-        currentAction = (rand() % 2 == 0) ? AIAction::ATTACK_HEAVY : AIAction::ATTACK_LIGHT;
-    } else {
-        // En fácil o medio, tiende más a usar el ataque ligero
-        currentAction = AIAction::ATTACK_LIGHT;
-    }
-
-    } else if (distanceToPlayer <= alertRange) {
-        currentAction = AIAction::APPROACH;
-    } else {
-        currentAction = AIAction::IDLE;
-    }
-
-    // 2. Definimos el rango donde el ataque del jugador realmente nos puede golpear (ej. 100 píxeles)
-    float attackThreatRange = 100.0f; 
-
-    // 3. Modificamos la condición para que el bot solo reaccione si ATACA y está CERCA
-    if (isPlayerAttacking && distanceToPlayer <= attackThreatRange) {
-        reactionTimer += GetFrameTime();
-        if (reactionTimer >= reactionDelay) {    
-        currentAction = AIAction::BLOCK;
-        reactionTimer = 0.0f;
-        }
-    } else {
-        // Si está lejos o no ataca, el temporizador se reinicia
-        reactionTimer = 0.0f;
-    }
-    if (isPlayerAttacking) {
-        reactionTimer += GetFrameTime();
-        
-        // El bot esperará el tiempo exacto que dictó su dificultad antes de reaccionar
-        if (reactionTimer >= reactionDelay) {
-            currentAction = AIAction::BLOCK; // O el nombre del estado de bloqueo que tengas
-            // Lógica de bloqueo o defensa
-            reactionTimer = 0.0f;
-        }
-    } else {
-        reactionTimer = 0.0f;
-    }
-
+    // 2. Ejecutar el movimiento o comportamiento físico correspondiente a la acción elegida por el árbol
     switch (currentAction) {
         case AIAction::APPROACH: {
             Vector2 dir = { playerPosition.x - position.x, playerPosition.y - position.y };
@@ -301,7 +255,7 @@ void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenW
         }
 
         case AIAction::RETREAT: {
-            // Retroceder alejándose del jugador sin perderlo de vista
+            // Retroceder alejándose del jugador tácticamente
             Vector2 dir = { position.x - playerPosition.x, position.y - playerPosition.y };
             float len = std::hypot(dir.x, dir.y);
             if (len > 0) {
@@ -333,10 +287,16 @@ void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenW
             break;
         }
 
+        case AIAction::ATTACK_LIGHT:
+        case AIAction::ATTACK_HEAVY:
+        case AIAction::BLOCK:
+        case AIAction::IDLE:
         default:
+            // Acciones de combate o estáticas (el enemigo se detiene en su posición para atacar o bloquear)
             break;
     }
 
+    // 3. Mantener al enemigo confinado dentro de los límites de la ventana
     ClampToScreen(screenWidth, screenHeight);
 }
 
@@ -351,7 +311,7 @@ void EnemyAI::TakeDamage(float amount) {
     }
 }
 
-/*void EnemyAI::Draw() {
+void EnemyAI::Draw() {
     Color botColor = RED;
     const char* actionText = "PATRULLANDO";
 
@@ -361,4 +321,4 @@ void EnemyAI::TakeDamage(float amount) {
     else if (currentAction == AIAction::BLOCK) { actionText = "BLOQUEANDO"; botColor = BLUE; }
 
     DrawRectangleV(position, size, botColor);
-}*/
+}

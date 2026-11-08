@@ -1,6 +1,6 @@
 # Configuración del compilador y banderas
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Iinclude -Isrc -Isrc/DESIGNAR/src -Isrc/DESIGNAR/include -Isrc/DESIGNAR
+CXXFLAGS = -std=c++17 -Wall -Iinclude -Isrc -I$(HOME)/libs/DESIGNAR/include -I$(HOME)/libs/DESIGNAR/src -I$(HOME)/libs/DESIGNAR
 
 # Banderas del sistema necesarias para Raylib en WSL/Linux, 
 # apuntando explícitamente a la biblioteca estática local en lib/

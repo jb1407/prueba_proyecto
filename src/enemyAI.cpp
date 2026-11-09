@@ -98,30 +98,35 @@ MTreeNode<DecisionKey>* EnemyAI::BuildMediumTree() {
     auto leafAttack   = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT));
     auto leafApproach = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
 
-    // 1. Nodo de ataque o repliegue táctico cuando está muy cerca
-    auto nodeCheckAttackOrRetreat = new MTreeNode<DecisionKey>(DecisionKey(
+    // 1. Nodo de probabilidad (Solo se ejecuta si está cerca): 60% Ataca, 40% Retrocede
+    auto nodeProbability = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
-            float dist = Vector2Distance(pos, pPos);
-            if (dist <= 60.0f) {
-                int randomChoice = rand() % 10;
-                return (randomChoice < 6); // 60% ataca, 40% retrocede
-            }
-            return false;
+            int randomChoice = rand() % 10;
+            return (randomChoice < 6); // 60% true (Ataca), 40% false (Retrocede)
         }
     ));
-    nodeCheckAttackOrRetreat->append_child(leafAttack);
-    leafAttack->add_right_sibling(leafRetreat1); // Hermano derecho (rama FALSE)
+    nodeProbability->append_child(leafAttack);
+    leafAttack->add_right_sibling(leafRetreat1); // Si el azar da false -> Retrocede (C_Backward)
 
-    // 2. Nodo de retroceso por presión del jugador
+    // 2. Nodo de Distancia: ¿Está el jugador a rango cuerpo a cuerpo (<= 60px)?
+    auto nodeCheckDistance = new MTreeNode<DecisionKey>(DecisionKey(
+        [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
+            return Vector2Distance(pos, pPos) <= 60.0f;
+        }
+    ));
+    nodeCheckDistance->append_child(nodeProbability);     // Si SÍ está cerca (TRUE) -> Evalúa la probabilidad de atacar/retroceder
+    nodeProbability->add_right_sibling(leafApproach);     // Si NO está cerca (FALSE) -> ¡Se acerca (APPROACH / C_Walk)!
+
+    // 3. Nodo de retroceso por presión del jugador (si el jugador ataca 3 veces seguidas)
     auto nodeCheckRetreat = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
             return atkCount >= 3;
         }
     ));
     nodeCheckRetreat->append_child(leafRetreat2);
-    leafRetreat2->add_right_sibling(nodeCheckAttackOrRetreat);
+    leafRetreat2->add_right_sibling(nodeCheckDistance);   // Si no hay presión -> Pasa a evaluar la distancia y el combate
 
-    // 3. Nodo de bloqueo
+    // 4. Nodo de bloqueo defensivo
     auto nodeCheckBlock = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
             return attacking && Vector2Distance(pos, pPos) <= 80.0f;
@@ -130,7 +135,7 @@ MTreeNode<DecisionKey>* EnemyAI::BuildMediumTree() {
     nodeCheckBlock->append_child(leafBlock);
     leafBlock->add_right_sibling(nodeCheckRetreat);
 
-    // 4. Raíz
+    // 5. Raíz: Rango de alerta general (250px)
     auto rootNode = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
             return Vector2Distance(pos, pPos) <= 250.0f;
@@ -264,19 +269,25 @@ void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenW
             Vector2 dir = { playerPosition.x - position.x, playerPosition.y - position.y };
             float len = std::hypot(dir.x, dir.y);
             if (len > 0) {
-                position.x += (dir.x / len) * speed.x;
-                position.y += (dir.y / len) * speed.y;
+                moveDir = { dir.x / len, dir.y / len }; // Guardamos la dirección normalizada
+                position.x += moveDir.x * speed.x;
+                position.y += moveDir.y * speed.y;
+            } else {
+                moveDir = { 0.0f, 0.0f };
             }
             break;
         }
 
         case AIAction::RETREAT: {
-            // Retroceder alejándose del jugador tácticamente con la animación C_Backward
+            // Retroceder alejándose del jugador tácticamente
             Vector2 dir = { position.x - playerPosition.x, position.y - playerPosition.y };
             float len = std::hypot(dir.x, dir.y);
             if (len > 0) {
-                position.x += (dir.x / len) * (speed.x * 0.8f);
-                position.y += (dir.y / len) * (speed.y * 0.8f);
+                moveDir = { dir.x / len, dir.y / len };
+                position.x += moveDir.x * (speed.x * 0.8f);
+                position.y += moveDir.y * (speed.x * 0.8f);
+            } else {
+                moveDir = { 0.0f, 0.0f };
             }
             break;
         }
@@ -295,9 +306,11 @@ void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenW
             float patrolSpeed = speed.x * 0.4f;
 
             if (dist > 2.0f) {
-                position.x += (dir.x / dist) * patrolSpeed;
-                position.y += (dir.y / dist) * patrolSpeed;
+                moveDir = { dir.x / dist, dir.y / dist };
+                position.x += moveDir.x * patrolSpeed;
+                position.y += moveDir.y * patrolSpeed;
             } else {
+                moveDir = { 0.0f, 0.0f };
                 patrolCornerIndex = (patrolCornerIndex + 1) % 4;
             }
             break;
@@ -308,7 +321,7 @@ void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenW
         case AIAction::BLOCK:
         case AIAction::IDLE:
         default:
-            // Acciones de combate o estáticas (el enemigo se detiene temporalmente para golpear o bloquear)
+            moveDir = { 0.0f, 0.0f };
             break;
     }
 
@@ -330,19 +343,31 @@ void EnemyAI::TakeDamage(float amount) {
 void EnemyAI::Draw(AssetManager& manager, Vector2 playerPosition) {
     std::string animKey = "C_Standing"; // Animación por defecto
 
-    // Mapear la acción del árbol de decisión a la clave del asset de animación
+    // Mapear la acción del árbol de decisión eligiendo entre caminar vertical u horizontal
     switch (currentAction) {
         case AIAction::APPROACH:
         case AIAction::PATROL:
-            animKey = "C_Walk";
+            // Si el desplazamiento vertical es mayor que el horizontal, usa arriba o abajo
+            if (std::abs(moveDir.y) > std::abs(moveDir.x)) {
+                if (moveDir.y < 0) {
+                    animKey = "C_WalkUP";   // Subiendo (respeta tu clave de asset)
+                } else {
+                    animKey = "C_WalkDown"; // Bajando
+                }
+            } else {
+                animKey = "C_Walk";         // Movimiento lateral (izquierda / derecha)
+            }
             break;
+
         case AIAction::RETREAT:
             animKey = "C_Backward";
             break;
+
         case AIAction::ATTACK_LIGHT:
         case AIAction::ATTACK_HEAVY:
             animKey = "C_Punch";
             break;
+
         case AIAction::BLOCK:
         case AIAction::IDLE:
         default:
@@ -353,11 +378,22 @@ void EnemyAI::Draw(AssetManager& manager, Vector2 playerPosition) {
     // Buscar la animación en el AssetManager
     Animation* anim = manager.Search(animKey);
 
-    // Determinar si debe voltearse (si el jugador está a su izquierda, flipX = true)
-    bool flipX = (playerPosition.x < position.x);
+    // Determinar si debe voltearse (flipX):
+    // - En PATROL: mira hacia la dirección de movimiento (moveDir.x)
+    // - En combate / otras acciones: fija la vista en el jugador
+    bool flipX = false;
+    if (currentAction == AIAction::PATROL) {
+        if (moveDir.x < 0) {
+            flipX = true;  // Mirando a la izquierda
+        } else if (moveDir.x > 0) {
+            flipX = false; // Mirando a la derecha
+        }
+    } else {
+        flipX = (playerPosition.x < position.x);
+    }
 
     if (anim != nullptr) {
-        // Dibujar usando la misma función de animación fluida del jugador[cite: 2]
+        // Dibujar usando la misma función de animación fluida del jugador
         UpdateAndDrawAnimation(*anim, position, flipX, 0.0f);
 
         // Reiniciar el loop de la animación si llega al final (útil para ataques)
@@ -366,7 +402,7 @@ void EnemyAI::Draw(AssetManager& manager, Vector2 playerPosition) {
             anim->tickCounter = 0;
         }
     } else {
-        // Fallback de seguridad por si la textura llegara a faltar[cite: 1]
+        // Fallback de seguridad por si la textura llegara a faltar
         DrawRectangleV(position, size, RED);
     }
 }

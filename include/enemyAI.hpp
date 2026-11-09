@@ -51,6 +51,8 @@ private:
     Vector2 initialPosition;
     Vector2 speed;
     Vector2 size;
+    Vector2 moveDir;
+    
     int health;
     int maxHealth;
     float damageMultiplier; // NUEVO: Multiplicador de resistencia/daño

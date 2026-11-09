@@ -93,26 +93,35 @@ MTreeNode<DecisionKey>* EnemyAI::BuildEasyTree() {
 MTreeNode<DecisionKey>* EnemyAI::BuildMediumTree() {
     auto leafPatrol   = new MTreeNode<DecisionKey>(DecisionKey(AIAction::PATROL));
     auto leafBlock    = new MTreeNode<DecisionKey>(DecisionKey(AIAction::BLOCK));
-    auto leafRetreat  = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
+    auto leafRetreat1 = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
+    auto leafRetreat2 = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
     auto leafAttack   = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT));
     auto leafApproach = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
 
-    auto nodeCheckAttack = new MTreeNode<DecisionKey>(DecisionKey(
+    // 1. Nodo de ataque o repliegue táctico cuando está muy cerca
+    auto nodeCheckAttackOrRetreat = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
-            return Vector2Distance(pos, pPos) <= 60.0f;
+            float dist = Vector2Distance(pos, pPos);
+            if (dist <= 60.0f) {
+                int randomChoice = rand() % 10;
+                return (randomChoice < 6); // 60% ataca, 40% retrocede
+            }
+            return false;
         }
     ));
-    nodeCheckAttack->append_child(leafAttack);
-    leafAttack->add_right_sibling(leafApproach);
+    nodeCheckAttackOrRetreat->append_child(leafAttack);
+    leafAttack->add_right_sibling(leafRetreat1); // Hermano derecho (rama FALSE)
 
+    // 2. Nodo de retroceso por presión del jugador
     auto nodeCheckRetreat = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
             return atkCount >= 3;
         }
     ));
-    nodeCheckRetreat->append_child(leafRetreat);
-    leafRetreat->add_right_sibling(nodeCheckAttack);
+    nodeCheckRetreat->append_child(leafRetreat2);
+    leafRetreat2->add_right_sibling(nodeCheckAttackOrRetreat);
 
+    // 3. Nodo de bloqueo
     auto nodeCheckBlock = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
             return attacking && Vector2Distance(pos, pPos) <= 80.0f;
@@ -121,6 +130,7 @@ MTreeNode<DecisionKey>* EnemyAI::BuildMediumTree() {
     nodeCheckBlock->append_child(leafBlock);
     leafBlock->add_right_sibling(nodeCheckRetreat);
 
+    // 4. Raíz
     auto rootNode = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
             return Vector2Distance(pos, pPos) <= 250.0f;
@@ -239,10 +249,16 @@ void EnemyAI::ClampToScreen(int screenWidth, int screenHeight) {
 }
 
 void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenWidth, int screenHeight) {
-    // 1. Dejar que el Árbol de Decisión mande y determine la acción actual según las condiciones del árbol
-    EvaluateTree(playerPosition, isPlayerAttacking);
+    // 1. Acumulamos el tiempo del frame para respetar el retraso de reacción de la dificultad
+    reactionTimer += GetFrameTime();
 
-    // 2. Ejecutar el movimiento o comportamiento físico correspondiente a la acción elegida por el árbol
+    // 2. Solo reevaluamos el árbol de decisiones cuando se cumpla el tiempo (evita el parpadeo / flickering)
+    if (reactionTimer >= reactionDelay) {
+        EvaluateTree(playerPosition, isPlayerAttacking);
+        reactionTimer = 0.0f; // Reiniciamos el temporizador de decisión
+    }
+
+    // 3. Ejecutar el movimiento o comportamiento físico correspondiente a la acción elegida
     switch (currentAction) {
         case AIAction::APPROACH: {
             Vector2 dir = { playerPosition.x - position.x, playerPosition.y - position.y };
@@ -255,7 +271,7 @@ void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenW
         }
 
         case AIAction::RETREAT: {
-            // Retroceder alejándose del jugador tácticamente
+            // Retroceder alejándose del jugador tácticamente con la animación C_Backward
             Vector2 dir = { position.x - playerPosition.x, position.y - playerPosition.y };
             float len = std::hypot(dir.x, dir.y);
             if (len > 0) {
@@ -292,11 +308,11 @@ void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenW
         case AIAction::BLOCK:
         case AIAction::IDLE:
         default:
-            // Acciones de combate o estáticas (el enemigo se detiene en su posición para atacar o bloquear)
+            // Acciones de combate o estáticas (el enemigo se detiene temporalmente para golpear o bloquear)
             break;
     }
 
-    // 3. Mantener al enemigo confinado dentro de los límites de la ventana
+    // 4. Mantener al enemigo confinado dentro de los límites de la ventana
     ClampToScreen(screenWidth, screenHeight);
 }
 

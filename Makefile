@@ -1,12 +1,11 @@
 # Configuración del compilador y banderas
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Iinclude -Isrc -I$(HOME)/libs/DESIGNAR/include -I$(HOME)/libs/DESIGNAR/src -I$(HOME)/libs/DESIGNAR
+CXXFLAGS = -std=c++17 -Wall -Iinclude -Isrc -Isrc/DESIGNAR/include -Isrc/DESIGNAR/src -Isrc/DESIGNAR
 
-# Banderas del sistema necesarias para Raylib en WSL/Linux, 
-# apuntando explícitamente a la biblioteca estática local en lib/
+# Banderas del sistema necesarias para Raylib en WSL/Linux
 LDFLAGS = lib/libraylib.a -lGL -lm -lpthread -ldl -lrt -lX11
 
-# Archivos fuente y objeto (excluyendo automáticamente samples y tests de DESIGNAR)
+# Ahora que DESIGNAR está dentro de src/, el find detectará todos sus .cpp automáticamente
 SRC = $(shell find src -name "*.cpp" -not -path "*/samples/*" -not -path "*/tests/*")
 OBJ = $(SRC:.cpp=.o)
 TARGET = game
@@ -14,11 +13,11 @@ TARGET = game
 # Regla principal
 all: $(TARGET)
 
-# Compilación del ejecutable enlazando la librería estática
+# Compilación del ejecutable enlazando todo
 $(TARGET): $(OBJ)
 	$(CXX) $(OBJ) $(LDFLAGS) -o $(TARGET)
 
-# Regla para compilar los archivos objeto
+# Regla genérica para compilar todos los .cpp (incluyendo los de la librería integrada)
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 

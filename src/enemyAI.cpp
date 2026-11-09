@@ -311,14 +311,46 @@ void EnemyAI::TakeDamage(float amount) {
     }
 }
 
-void EnemyAI::Draw() {
-    Color botColor = RED;
-    const char* actionText = "PATRULLANDO";
+void EnemyAI::Draw(AssetManager& manager, Vector2 playerPosition) {
+    std::string animKey = "C_Standing"; // Animación por defecto
 
-    if (currentAction == AIAction::APPROACH) { actionText = "PERSIGUIENDO"; botColor = ORANGE; }
-    else if (currentAction == AIAction::RETREAT) { actionText = "RETROCEDIENDO"; botColor = PURPLE; }
-    else if (currentAction == AIAction::ATTACK_LIGHT) { actionText = "ATACANDO"; botColor = RED; }
-    else if (currentAction == AIAction::BLOCK) { actionText = "BLOQUEANDO"; botColor = BLUE; }
+    // Mapear la acción del árbol de decisión a la clave del asset de animación
+    switch (currentAction) {
+        case AIAction::APPROACH:
+        case AIAction::PATROL:
+            animKey = "C_Walk";
+            break;
+        case AIAction::RETREAT:
+            animKey = "C_Backward";
+            break;
+        case AIAction::ATTACK_LIGHT:
+        case AIAction::ATTACK_HEAVY:
+            animKey = "C_Punch";
+            break;
+        case AIAction::BLOCK:
+        case AIAction::IDLE:
+        default:
+            animKey = "C_Standing";
+            break;
+    }
 
-    DrawRectangleV(position, size, botColor);
+    // Buscar la animación en el AssetManager
+    Animation* anim = manager.Search(animKey);
+
+    // Determinar si debe voltearse (si el jugador está a su izquierda, flipX = true)
+    bool flipX = (playerPosition.x < position.x);
+
+    if (anim != nullptr) {
+        // Dibujar usando la misma función de animación fluida del jugador[cite: 2]
+        UpdateAndDrawAnimation(*anim, position, flipX, 0.0f);
+
+        // Reiniciar el loop de la animación si llega al final (útil para ataques)
+        if (anim->currentFrame >= anim->totalFrames - 1) {
+            anim->currentFrame = 0;
+            anim->tickCounter = 0;
+        }
+    } else {
+        // Fallback de seguridad por si la textura llegara a faltar[cite: 1]
+        DrawRectangleV(position, size, RED);
+    }
 }

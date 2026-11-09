@@ -4,6 +4,7 @@
 #include <raylib.h>
 #include <functional>
 #include "mtreenode.hpp" // Ajusta la ruta según donde tengas tu librería
+#include "Mechanics.hpp"
 
 using namespace Designar;
 
@@ -87,7 +88,7 @@ public:
     ~EnemyAI();
 
     void Update(Vector2 playerPosition, bool isPlayerAttacking, int screenWidth, int screenHeight);
-    void Draw();
+    void Draw(AssetManager& manager, Vector2 playerPosition);
     void EvaluateTree(Vector2 playerPosition, bool isPlayerAttacking);
     AIAction GetCurrentAction() const { return currentAction; }
 

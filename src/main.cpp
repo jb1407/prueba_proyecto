@@ -49,13 +49,18 @@
 }*/
 
 int main() {
-    const int screenWidth = 800;
-    const int screenHeight = 600;
+    const int screenWidth = 1600;
+    const int screenHeight = 900;
 
-    InitWindow(screenWidth, screenHeight, "Prueba Aislada - Rectángulos y Colisiones");
+    InitWindow(screenWidth, screenHeight, "Prueba Aislada - Sprites y Animaciones");
     SetTargetFPS(60);
 
-    // Posiciones e instancias básicas usando solo rectángulos de Raylib
+    // 1. INICIALIZAR Y CARGAR LOS ASSETS
+    // Creamos el AssetManager con una capacidad adecuada e insertamos las texturas
+    AssetManager assetManager(10); 
+    LoadAssetsToTable(assetManager);
+
+    // Posiciones e instancias básicas
     Vector2 playerPos = { 200.0f, 300.0f };
     Vector2 playerSize = { 40.0f, 40.0f };
     float playerSpeed = 4.0f;
@@ -63,7 +68,7 @@ int main() {
     EnemyAI enemy(500.0f, 300.0f, Difficulty::MEDIUM);
 
     while (!WindowShouldClose()) {
-        // Movimiento básico de prueba
+        // Movimiento básico de prueba del jugador
         if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) playerPos.x += playerSpeed;
         if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) playerPos.x -= playerSpeed;
         if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) playerPos.y -= playerSpeed;
@@ -75,14 +80,15 @@ int main() {
         BeginDrawing();
         ClearBackground(GRAY);
 
-        DrawText("PRUEBA DE RECTÁNGULOS", 10, 10, 20, YELLOW);
+        DrawText("PRUEBA DE SPRITES - ENEMIGO IA", 10, 10, 20, YELLOW);
         DrawText("Flechas/WASD: Mover cuadro | SPACE: Simular Ataque", 10, 35, 16, LIGHTGRAY);
 
-        // Dibujar jugador como rectángulo azul
+        // Dibujar jugador como rectángulo azul (puedes dejarlo así o animarlo después)
         DrawRectangleV(playerPos, playerSize, BLUE);
 
-        // Dibujar enemigo (utiliza su propio método Draw)
-        enemy.Draw();
+        // 2. DIBUJAR AL ENEMIGOS CON SU NUEVO MÉTODO ANIMADO
+        // Le pasamos el assetManager y la posición actual del jugador para que voltee a verlo
+        enemy.Draw(assetManager, playerPos);
 
         EndDrawing();
     }

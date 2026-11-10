@@ -52,6 +52,15 @@ int main() {
     const int screenWidth = 1600;
     const int screenHeight = 900;
 
+    // --- POSICIONES DINÁMICAS ---
+    // Jugador: 15% desde la izquierda, centrado verticalmente
+    float playerStartX = screenWidth * 0.15f;
+    float playerStartY = (screenHeight / 2.0f) - 20.0f; 
+
+    // Enemigo: 85% desde la izquierda (o un margen desde la derecha), centrado verticalmente
+    float enemyStartX = (screenWidth * 0.85f) - 40.0f; // Restando el ancho del enemigo (40px)
+    float enemyStartY = (screenHeight / 2.0f) - 20.0f;
+
     InitWindow(screenWidth, screenHeight, "Prueba Aislada - Sprites y Animaciones");
     SetTargetFPS(60);
 
@@ -61,11 +70,11 @@ int main() {
     LoadAssetsToTable(assetManager);
 
     // Posiciones e instancias básicas
-    Vector2 playerPos = { 200.0f, 300.0f };
+    Vector2 playerPos = { playerStartX, playerStartY };
     Vector2 playerSize = { 40.0f, 40.0f };
     float playerSpeed = 4.0f;
 
-    EnemyAI enemy(500.0f, 300.0f, Difficulty::MEDIUM);
+    EnemyAI enemy(enemyStartX, enemyStartY, Difficulty::MEDIUM);
 
     while (!WindowShouldClose()) {
         // Movimiento básico de prueba del jugador

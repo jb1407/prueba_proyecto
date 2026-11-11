@@ -1,7 +1,8 @@
 #include "Player.hpp"
 #include <cmath>
 
-Player::Player(float startX, float startY) {
+Player::Player(float startX, float startY) : hurtbox(startX, startY, 40.0f, 40.0f, true),
+    attackHitbox(startX, startY, 30.0f, 20.0f, false) {
     position = { startX, startY };
     size = { 40.0f, 40.0f };
     speed = 4.0f; 
@@ -82,6 +83,17 @@ void Player::Update(AssetManager& assetManager) {
 
     // 3. Solicitamos al CombatManager que ejecute y dibuje la animación correspondiente
     combatManager.RequestMove(currentMove, assetManager, position, flipX);
+
+    hurtbox.UpdatePosition(position.x, position.y, 0.0f, 0.0f);
+
+    if (currentMove == Punch) {
+        attackHitbox.SetActive(true);
+        // Si flipX es verdadero mira a la izquierda, ajustamos el offset del ataque
+        float offsetX = flipX ? -30.0f : size.x;
+        attackHitbox.UpdatePosition(position.x, position.y, offsetX, 10.0f);
+    } else {
+        attackHitbox.SetActive(false);
+    }
 }
 
 void Player::TakeDamage(float amount) {

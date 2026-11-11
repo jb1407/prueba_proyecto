@@ -2,13 +2,14 @@
 #include <cmath>
 #include <raymath.h>
 
-EnemyAI::EnemyAI(float startX, float startY, Difficulty diff) {
-    position = { startX, startY };
-    initialPosition = position;
+EnemyAI::EnemyAI(float startX, float startY, Difficulty diff) : hurtbox(startX, startY, 40.0f, 40.0f, true),
+    attackHitbox(startX, startY, 30.0f, 20.0f, false) {
     size = { 40.0f, 40.0f };
     currentDifficulty = diff;
     health = 100;
     maxHealth = 100;
+    position = { startX, startY };
+    initialPosition = { startX, startY };
 
     switch (diff) {
         case Difficulty::EASY:
@@ -327,6 +328,17 @@ void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenW
 
     // 4. Mantener al enemigo confinado dentro de los límites de la ventana
     ClampToScreen(screenWidth, screenHeight);
+
+    hurtbox.UpdatePosition(position.x, position.y, 0.0f, 0.0f);
+
+    if (currentAction == AIAction::ATTACK_LIGHT || currentAction == AIAction::ATTACK_HEAVY) {
+        attackHitbox.SetActive(true);
+        // Desplazar la hitbox de ataque hacia el lado donde esté mirando el enemigo
+        float offsetX = (playerPosition.x < position.x) ? -30.0f : size.x;
+        attackHitbox.UpdatePosition(position.x, position.y, offsetX, 10.0f);
+    } else {
+        attackHitbox.SetActive(false);
+    }
 }
 
 void EnemyAI::TakeDamage(float amount) {

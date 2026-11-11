@@ -1,10 +1,10 @@
 #include "Player.hpp"
 #include <cmath>
 
-Player::Player(float startX, float startY) : hurtbox(startX, startY, 40.0f, 40.0f, true),
-    attackHitbox(startX, startY, 30.0f, 20.0f, false) {
+Player::Player(float startX, float startY) : hurtbox(startX, startY, 115.0f, 200.0f, true),
+    attackHitbox(startX, startY, 45.0f, 30.0f, false) {
     position = { startX, startY };
-    size = { 40.0f, 40.0f };
+    size = { 55.0f, 100.0f };
     speed = 4.0f; 
     maxHealth = 100.0f;
     health = 100.0f;
@@ -88,9 +88,18 @@ void Player::Update(AssetManager& assetManager) {
 
     if (currentMove == Punch) {
         attackHitbox.SetActive(true);
-        // Si flipX es verdadero mira a la izquierda, ajustamos el offset del ataque
-        float offsetX = flipX ? -30.0f : size.x;
-        attackHitbox.UpdatePosition(position.x, position.y, offsetX, 10.0f);
+        
+        // Supongamos que el ancho de tu hitbox de ataque es de 30.0f
+        float attackWidth = 60.0f; 
+        
+        // Añadimos un pequeño margen de separación extra (por ejemplo, + 10.0f o el ancho completo)
+        // para garantizar que salga totalmente fuera de la caja azul del cuerpo.
+        float offsetX = flipX ? (-attackWidth - 10.0f) : (size.x + 55.0f);
+        
+        // Mantener la altura a la altura del pecho/brazos
+        float offsetY = size.y * 0.6f; 
+        
+        attackHitbox.UpdatePosition(position.x, position.y, offsetX, offsetY);
     } else {
         attackHitbox.SetActive(false);
     }

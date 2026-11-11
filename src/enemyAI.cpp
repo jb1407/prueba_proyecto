@@ -2,14 +2,15 @@
 #include <cmath>
 #include <raymath.h>
 
-EnemyAI::EnemyAI(float startX, float startY, Difficulty diff) : hurtbox(startX, startY, 40.0f, 40.0f, true),
-    attackHitbox(startX, startY, 30.0f, 20.0f, false) {
+EnemyAI::EnemyAI(float startX, float startY, Difficulty diff) : hurtbox(startX, startY, 115.0f, 200.0f, true),
+    attackHitbox(startX, startY, 45.0f, 30.0f, false) {
     size = { 40.0f, 40.0f };
     currentDifficulty = diff;
     health = 100;
     maxHealth = 100;
     position = { startX, startY };
     initialPosition = { startX, startY };
+
 
     switch (diff) {
         case Difficulty::EASY:
@@ -333,9 +334,19 @@ void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenW
 
     if (currentAction == AIAction::ATTACK_LIGHT || currentAction == AIAction::ATTACK_HEAVY) {
         attackHitbox.SetActive(true);
-        // Desplazar la hitbox de ataque hacia el lado donde esté mirando el enemigo
-        float offsetX = (playerPosition.x < position.x) ? -30.0f : size.x;
-        attackHitbox.UpdatePosition(position.x, position.y, offsetX, 10.0f);
+        
+        // El ancho de la hitbox de ataque del enemigo
+        float attackWidth = 60.0f; 
+        
+        // Determinamos la orientación según dónde esté el jugador respecto al enemigo:
+        // Si el jugador está a la izquierda (playerPosition.x < position.x), el enemigo golpea hacia la izquierda,
+        // por lo que restamos el ancho y el margen extra. Si está a la derecha, sumamos size.x y el margen.
+        float offsetX = (playerPosition.x < position.x) ? (-attackWidth - 10.0f) : (size.x + 55.0f);
+        
+        // Ajustamos la altura al porcentaje correspondiente (ej: 0.6f o lo que uses para el torso)
+        float offsetY = size.y * 0.6f; 
+        
+        attackHitbox.UpdatePosition(position.x, position.y, offsetX, offsetY);
     } else {
         attackHitbox.SetActive(false);
     }

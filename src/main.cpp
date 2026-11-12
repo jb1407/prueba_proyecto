@@ -3,6 +3,7 @@
 #include "Mechanics.hpp"
 #include "Player.hpp"
 #include "enemyAI.hpp"
+#include "hud.hpp"
 
 /*int main() {
     // 1. Inicializar la ventana de Raylib
@@ -57,22 +58,27 @@ int main() {
     float playerStartX = screenWidth * 0.15f;
     float playerStartY = (screenHeight / 2.0f) - 20.0f; 
 
-    // Enemigo: 85% desde la izquierda (o un margen desde la derecha), centrado verticalmente
-    float enemyStartX = (screenWidth * 0.85f) - 40.0f; // Restando el ancho del enemigo (40px)
+    // Enemigo: 85% desde la izquierda, centrado verticalmente
+    float enemyStartX = (screenWidth * 0.85f) - 40.0f; 
     float enemyStartY = (screenHeight / 2.0f) - 20.0f;
 
     InitWindow(screenWidth, screenHeight, "Prueba Aislada - Sprites y Animaciones");
     SetTargetFPS(60);
 
     // 1. INICIALIZAR Y CARGAR LOS ASSETS
-    // Creamos el AssetManager con una capacidad adecuada e insertamos las texturas
     AssetManager assetManager(10); 
     LoadAssetsToTable(assetManager);
 
-    // Posiciones e instancias básicas
+    // Fuente para el HUD (puedes usar GetFontDefault() o cargar tu fuente personalizada del menú con LoadFont("ruta/fuente.ttf"))
+    Font menuFont = GetFontDefault(); 
+
+    // Posiciones, estadísticas e instancias básicas de prueba
     Vector2 playerPos = { playerStartX, playerStartY };
     Vector2 playerSize = { 40.0f, 40.0f };
     float playerSpeed = 4.0f;
+    
+    float playerHealth = 100.0f;
+    float playerMaxHealth = 100.0f;
 
     EnemyAI enemy(enemyStartX, enemyStartY, Difficulty::MEDIUM);
 
@@ -86,18 +92,35 @@ int main() {
         bool isPlayerAttacking = IsKeyPressed(KEY_SPACE);
         enemy.Update(playerPos, isPlayerAttacking, screenWidth, screenHeight);
 
+        // --- SIMULACIÓN RÁPIDA DE DAÑO PARA PROBAR LAS BARRAS ---
+        // (Opcional: puedes quitar esto luego cuando conectes las verdaderas colisiones de hitboxes)
+        if (IsKeyPressed(KEY_ENTER)) {
+            playerHealth -= 15.0f; // Si presionas Enter, el jugador pierde vida
+            enemy.TakeDamage(20.0f); // Si presionas Enter, el enemigo pierde vida
+        }
+
         BeginDrawing();
         ClearBackground(GRAY);
 
         DrawText("PRUEBA DE SPRITES - ENEMIGO IA", 10, 10, 20, YELLOW);
-        DrawText("Flechas/WASD: Mover cuadro | SPACE: Simular Ataque", 10, 35, 16, LIGHTGRAY);
+        DrawText("Flechas/WASD: Mover cuadro | SPACE: Simular Ataque | ENTER: Probar daño en barras", 10, 35, 16, LIGHTGRAY);
 
-        // Dibujar jugador como rectángulo azul (puedes dejarlo así o animarlo después)
+        // Dibujar jugador como rectángulo azul
         DrawRectangleV(playerPos, playerSize, BLUE);
 
-        // 2. DIBUJAR AL ENEMIGOS CON SU NUEVO MÉTODO ANIMADO
-        // Le pasamos el assetManager y la posición actual del jugador para que voltee a verlo
+        // 2. DIBUJAR AL ENEMIGO CON SU MÉTODO ANIMADO
         enemy.Draw(assetManager, playerPos);
+
+        // 3. DIBUJAR LAS BARRAS DE VIDA (HUD) EN LAS ESQUINAS
+        HUD::Draw(
+            screenWidth, 
+            screenHeight, 
+            playerHealth, 
+            playerMaxHealth, 
+            enemy.GetHealth(), 
+            enemy.GetMaxHealth(), 
+            menuFont
+        );
 
         EndDrawing();
     }

@@ -4,7 +4,7 @@
 
 EnemyAI::EnemyAI(float startX, float startY, Difficulty diff) : hurtbox(startX, startY, 115.0f, 200.0f, true),
     attackHitbox(startX, startY, 45.0f, 30.0f, false) {
-    size = { 40.0f, 40.0f };
+    size = { 115.0f, 200.0f };
     currentDifficulty = diff;
     health = 100;
     maxHealth = 100;
@@ -17,7 +17,7 @@ EnemyAI::EnemyAI(float startX, float startY, Difficulty diff) : hurtbox(startX, 
             speed = { 1.8f, 1.8f };
             reactionDelay = 0.35f;
             attackRange = 50.0f;     // Rango de ataque cuerpo a cuerpo para fácil
-            alertRange = 250.0f;     // Rango de visión de la IA
+            alertRange = 300.0f;     // Rango de visión de la IA
             damageMultiplier = 1.25f;
             break;
 
@@ -25,7 +25,7 @@ EnemyAI::EnemyAI(float startX, float startY, Difficulty diff) : hurtbox(startX, 
             speed = { 2.5f, 2.5f };
             reactionDelay = 0.25f;
             attackRange = 60.0f;
-            alertRange = 200.0f;
+            alertRange = 450.0f;
             damageMultiplier = 1.00f;
 
             break;
@@ -34,7 +34,7 @@ EnemyAI::EnemyAI(float startX, float startY, Difficulty diff) : hurtbox(startX, 
             speed = { 3.5f, 3.5f };
             reactionDelay = 0.15f;
             attackRange = 70.0f;
-            alertRange = 150.0f;     // Un bot más peligroso te detecta desde más lejos
+            alertRange = 600.0f;     // Un bot más peligroso te detecta desde más lejos
             damageMultiplier = 0.75f;
             break;
     }
@@ -43,8 +43,8 @@ EnemyAI::EnemyAI(float startX, float startY, Difficulty diff) : hurtbox(startX, 
     
     patrolCenter = initialPosition;
     patrolCornerIndex = 0;
-    rectWidth = 60.0f;   
-    rectHeight = 40.0f;  
+    rectWidth = 150.0f;   
+    rectHeight = 90.0f;  
     patrolDirection = { 1.0f, 0.5f };
     playerAttackCounter = 0;
 
@@ -71,19 +71,19 @@ MTreeNode<DecisionKey>* EnemyAI::BuildEasyTree() {
     auto leafAttack   = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT));
     auto leafApproach = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
 
-    // Nodo interno: ¿En rango de ataque? (Sí -> Atacar, No -> Acercarse)
+    // Nodo interno: ¿En rango de ataque? (Usando attackRange dinámico)
     auto nodeCheckAttack = new MTreeNode<DecisionKey>(DecisionKey(
-        [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
-            return Vector2Distance(pos, pPos) <= 60.0f;
+        [this](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
+            return Vector2Distance(pos, pPos) <= this->attackRange;
         }
     ));
     nodeCheckAttack->append_child(leafAttack);
     leafAttack->add_right_sibling(leafApproach);
 
-    // Raíz Fácil: ¿Jugador dentro de 150px? (Sí -> Evaluar ataque, No -> Patrullar)
+    // Raíz Fácil: Usa el alertRange (300px) configurado en el constructor
     auto rootNode = new MTreeNode<DecisionKey>(DecisionKey(
-        [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
-            return Vector2Distance(pos, pPos) <= 150.0f;
+        [this](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
+            return Vector2Distance(pos, pPos) <= this->alertRange;
         }
     ));
     rootNode->append_child(nodeCheckAttack);
@@ -112,8 +112,8 @@ MTreeNode<DecisionKey>* EnemyAI::BuildMediumTree() {
 
     // 2. Nodo de Distancia: ¿Está el jugador a rango cuerpo a cuerpo (<= 60px)?
     auto nodeCheckDistance = new MTreeNode<DecisionKey>(DecisionKey(
-        [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
-            return Vector2Distance(pos, pPos) <= 60.0f;
+        [this](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
+            return Vector2Distance(pos, pPos) <= this->attackRange;
         }
     ));
     nodeCheckDistance->append_child(nodeProbability);     // Si SÍ está cerca (TRUE) -> Evalúa la probabilidad de atacar/retroceder
@@ -130,8 +130,8 @@ MTreeNode<DecisionKey>* EnemyAI::BuildMediumTree() {
 
     // 4. Nodo de bloqueo defensivo
     auto nodeCheckBlock = new MTreeNode<DecisionKey>(DecisionKey(
-        [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
-            return attacking && Vector2Distance(pos, pPos) <= 80.0f;
+        [this](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
+            return attacking && Vector2Distance(pos, pPos) <= (this->attackRange * 1.3f);
         }
     ));
     nodeCheckBlock->append_child(leafBlock);
@@ -139,8 +139,8 @@ MTreeNode<DecisionKey>* EnemyAI::BuildMediumTree() {
 
     // 5. Raíz: Rango de alerta general (250px)
     auto rootNode = new MTreeNode<DecisionKey>(DecisionKey(
-        [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
-            return Vector2Distance(pos, pPos) <= 250.0f;
+        [this](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
+            return Vector2Distance(pos, pPos) <= this->alertRange;
         }
     ));
     rootNode->append_child(nodeCheckBlock);
@@ -154,14 +154,14 @@ MTreeNode<DecisionKey>* EnemyAI::BuildHardTree() {
     auto leafBlock       = new MTreeNode<DecisionKey>(DecisionKey(AIAction::BLOCK));
     auto leafRetreat     = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
     auto leafAttackLight = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT));
-    auto leafAttackHeavy = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_HEAVY)); // Nuevo estado duro
+    auto leafAttackHeavy = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_HEAVY)); 
     auto leafApproach    = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
 
-    // Nodo: ¿Distancia ideal para ataque pesado?
+    // Nodo: ¿Distancia ideal para ataque pesado? (Entre attackRange y el doble)
     auto nodeCheckHeavy = new MTreeNode<DecisionKey>(DecisionKey(
-        [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
+        [this](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
             float dist = Vector2Distance(pos, pPos);
-            return dist > 60.0f && dist <= 120.0f; // Rango medio para golpe fuerte
+            return dist > this->attackRange && dist <= (this->attackRange * 1.8f);
         }
     ));
     nodeCheckHeavy->append_child(leafAttackHeavy);
@@ -169,40 +169,41 @@ MTreeNode<DecisionKey>* EnemyAI::BuildHardTree() {
 
     // Nodo: ¿En rango de golpe ligero?
     auto nodeCheckLight = new MTreeNode<DecisionKey>(DecisionKey(
-        [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
-            return Vector2Distance(pos, pPos) <= 60.0f;
+        [this](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
+            return Vector2Distance(pos, pPos) <= this->attackRange;
         }
     ));
     nodeCheckLight->append_child(leafAttackLight);
     leafAttackLight->add_right_sibling(nodeCheckHeavy);
 
-    // Nodo de presión / retroceso estricto
+    // Nodo de presión estricta (reacciona más rápido, a los 2 ataques)
     auto nodeCheckRetreat = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
-            return atkCount >= 2; // Reacciona más rápido (a los 2 ataques)
+            return atkCount >= 2; 
         }
     ));
     nodeCheckRetreat->append_child(leafRetreat);
     leafRetreat->add_right_sibling(nodeCheckLight);
 
-    // Nodo de bloqueo avanzado
+    // Nodo de bloqueo avanzado (bloquea agresivamente)
     auto nodeCheckBlock = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
-            return attacking; // Bloquea casi cualquier ataque inminente sin importar tanto la distancia exacta
+            return attacking; 
         }
     ));
     nodeCheckBlock->append_child(leafBlock);
     leafBlock->add_right_sibling(nodeCheckRetreat);
 
-    // Raíz Difícil: Rango de alerta masivo (400px)
+    // Raíz Difícil: Rango de alerta masivo (Hard = 600px)
     auto rootNode = new MTreeNode<DecisionKey>(DecisionKey(
-        [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
-            return Vector2Distance(pos, pPos) <= 400.0f; // ¡Te detecta desde lejos!
+        [this](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
+            return Vector2Distance(pos, pPos) <= this->alertRange; 
         }
     ));
     rootNode->append_child(nodeCheckBlock);
     nodeCheckBlock->add_right_sibling(leafPatrol);
 
+    // Asegúrate de capturar 'this' en las lambdas para poder leer attackRange y alertRange con seguridad.
     return rootNode;
 }
 

@@ -24,6 +24,9 @@ private:
     Hitbox hurtbox;       // El cuerpo del jugador (para recibir daño)
     Hitbox attackHitbox;  // El área de impacto de su ataque
 
+    float invincibilityTimer;
+    bool isInvincible;
+
 public:
     // Constructor
     Player(float startX, float startY);

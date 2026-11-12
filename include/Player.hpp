@@ -3,6 +3,7 @@
 
 #include "raylib.h"
 #include "Mechanics.hpp" // Esto ya incluye LoadAssets.hpp automáticamente
+#include "hitbox.hpp"    // <-- NUEVO: Incluimos el módulo de hitboxes
 
 class Player {
 private:
@@ -12,14 +13,19 @@ private:
     float health;
     float maxHealth;
 
-    // --- Nuevos atributos para las animaciones y mecánicas ---
     MoveSetBase currentMove;
     CombatManager combatManager;
     bool flipX;
 
-    // --- Atributos para el movimiento de Backward (esquive con impulso) ---
     Vector2 dodgeDir;
     float dodgeSpeed;
+
+    // --- NUEVO: Cajas de colisión del Jugador ---
+    Hitbox hurtbox;       // El cuerpo del jugador (para recibir daño)
+    Hitbox attackHitbox;  // El área de impacto de su ataque
+
+    float invincibilityTimer;
+    bool isInvincible;
 
 public:
     // Constructor
@@ -41,6 +47,10 @@ public:
 
     float GetHealth() const { return health; }
     float GetMaxHealth() const { return maxHealth; }
+
+    // --- NUEVOS GETTERS PARA LAS HITBOXES ---
+    Rectangle GetHurtbox() const { return hurtbox.GetRect(); }
+    const Hitbox& GetAttackHitbox() const { return attackHitbox; }
 };
 
 #endif

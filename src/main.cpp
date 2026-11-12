@@ -1,126 +1,110 @@
 #include "raylib.h"
 #include "LoadAssets.hpp"
-#include "Mechanics.hpp"
 #include "Player.hpp"
 #include "enemyAI.hpp"
 #include "hud.hpp"
 
-/*int main() {
-    // 1. Inicializar la ventana de Raylib
-    const int screenWidth = 800;
-    const int screenHeight = 600;
-    InitWindow(screenWidth, screenHeight, "Arena Fighter - Prueba de Integracion");
-    SetTargetFPS(60);
-
-    // 2. Inicializar el administrador de assets y cargar la tabla hash
-    AssetManager assetManager;
-    LoadAssetsToTable(assetManager);
-
-    // 3. Crear una instancia del jugador en el centro de la pantalla
-    // (Pasamos la posición inicial X y Y)
-    Player player(screenWidth / 2.0f - 20.0f, screenHeight / 2.0f - 20.0f);
-
-    // 4. Bucle principal del juego
-    while (!WindowShouldClose()) {
-        
-        // --- Actualización de lógica e inputs ---
-        // El jugador lee el teclado, actualiza su posición y le pide al CombatManager 
-        // que dibuje la animación correspondiente usando la tabla hash.
-        player.Update(assetManager);
-
-        // --- Dibujado en pantalla ---
-        BeginDrawing();
-        ClearBackground(DARKGRAY);
-
-        // Texto de guía en la interfaz
-        DrawText("Usa W, A, S, D para moverte y ESPACIO para golpear", 20, 20, 18, LIGHTGRAY);
-        
-        // Opcional: Dibujar el rectángulo de colisión del jugador para depurar
-        DrawRectangleLinesEx(player.GetRectangle(), 1, GREEN);
-
-        EndDrawing();
-    }
-
-    // 5. Cierre de la aplicación
-    // Nota: El destructor de AssetManager (~AssetManager) se encargará 
-    // automáticamente de liberar las texturas de la GPU al salir del ámbito.
-    CloseWindow();
-
-    return 0;
-}*/
+// Estado del juego para controlar el fin de partida
+enum GameState {
+    PLAYING,
+    VICTORY,
+    GAME_OVER
+};
 
 int main() {
     const int screenWidth = 1600;
     const int screenHeight = 900;
 
     // --- POSICIONES DINÁMICAS ---
-    // Jugador: 15% desde la izquierda, centrado verticalmente
     float playerStartX = screenWidth * 0.15f;
     float playerStartY = (screenHeight / 2.0f) - 20.0f; 
 
-    // Enemigo: 85% desde la izquierda, centrado verticalmente
     float enemyStartX = (screenWidth * 0.85f) - 40.0f; 
     float enemyStartY = (screenHeight / 2.0f) - 20.0f;
 
-    InitWindow(screenWidth, screenHeight, "Prueba Aislada - Sprites y Animaciones");
+    InitWindow(screenWidth, screenHeight, "Prueba Aislada - Combate, Hitboxes y HUD");
     SetTargetFPS(60);
 
     // 1. INICIALIZAR Y CARGAR LOS ASSETS
-    AssetManager assetManager(10); 
+    AssetManager assetManager(15); 
     LoadAssetsToTable(assetManager);
 
-    // Fuente para el HUD (puedes usar GetFontDefault() o cargar tu fuente personalizada del menú con LoadFont("ruta/fuente.ttf"))
     Font menuFont = GetFontDefault(); 
 
-    // Posiciones, estadísticas e instancias básicas de prueba
-    Vector2 playerPos = { playerStartX, playerStartY };
-    Vector2 playerSize = { 40.0f, 40.0f };
-    float playerSpeed = 4.0f;
-    
-    float playerHealth = 100.0f;
-    float playerMaxHealth = 100.0f;
-
+    // Instancias de los personajes
+    Player player(playerStartX, playerStartY);
     EnemyAI enemy(enemyStartX, enemyStartY, Difficulty::MEDIUM);
 
+    GameState gameState = PLAYING; // Estado inicial
+
     while (!WindowShouldClose()) {
-        // Movimiento básico de prueba del jugador
-        if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) playerPos.x += playerSpeed;
-        if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) playerPos.x -= playerSpeed;
-        if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) playerPos.y -= playerSpeed;
-        if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) playerPos.y += playerSpeed;
+        
+        // --- 2. LÓGICA SEGÚN EL ESTADO DEL JUEGO ---
+        if (gameState == PLAYING) {
+            // Actualización de movimientos
+            player.Update(assetManager);
+            enemy.Update(player.getPosition(), IsKeyDown(KEY_SPACE), screenWidth, screenHeight);
 
-        bool isPlayerAttacking = IsKeyPressed(KEY_SPACE);
-        enemy.Update(playerPos, isPlayerAttacking, screenWidth, screenHeight);
+            // Detección de colisiones (Hitboxes vs Hurtbox)
+            if (player.GetAttackHitbox().CheckCollision(enemy.GetHurtbox())) {
+                enemy.TakeDamage(1.5f); 
+            }
 
-        // --- SIMULACIÓN RÁPIDA DE DAÑO PARA PROBAR LAS BARRAS ---
-        // (Opcional: puedes quitar esto luego cuando conectes las verdaderas colisiones de hitboxes)
-        if (IsKeyPressed(KEY_ENTER)) {
-            playerHealth -= 15.0f; // Si presionas Enter, el jugador pierde vida
-            enemy.TakeDamage(20.0f); // Si presionas Enter, el enemigo pierde vida
+            if (enemy.GetAttackHitbox().CheckCollision(player.GetHurtbox())) {
+                player.TakeDamage(1.0f); 
+            }
+
+            // Comprobar condiciones de fin de partida
+            if (player.IsDead()) {
+                gameState = GAME_OVER;
+            } else if (enemy.IsDead()) {
+                gameState = VICTORY;
+            }
         }
 
+        // --- 3. RENDERIZADO ---
         BeginDrawing();
         ClearBackground(GRAY);
 
-        DrawText("PRUEBA DE SPRITES - ENEMIGO IA", 10, 10, 20, YELLOW);
-        DrawText("Flechas/WASD: Mover cuadro | SPACE: Simular Ataque | ENTER: Probar daño en barras", 10, 35, 16, LIGHTGRAY);
+        // Dibujar elementos estéticos del escenario de combate
+        DrawText("SISTEMA DE COMBATE ACTIVO", 10, 10, 20, YELLOW);
+        DrawText("WASD/Flechas: Mover Jugador | SPACE: Atacar (Punch) | U: Esquivar (Backward)", 10, 35, 16, LIGHTGRAY);
 
-        // Dibujar jugador como rectángulo azul
-        DrawRectangleV(playerPos, playerSize, BLUE);
+        // Dibujar al enemigo y HUD de vida
+        enemy.Draw(assetManager, player.getPosition());
 
-        // 2. DIBUJAR AL ENEMIGO CON SU MÉTODO ANIMADO
-        enemy.Draw(assetManager, playerPos);
+        // 1. Hurtboxes (Cuerpos) - Los dibujamos en Azul semitransparente
+        DrawRectangleRec(player.GetHurtbox(), Fade(BLUE, 0.4f));
+        DrawRectangleRec(enemy.GetHurtbox(), Fade(BLUE, 0.4f));
 
-        // 3. DIBUJAR LAS BARRAS DE VIDA (HUD) EN LAS ESQUINAS
+        // 2. Attack Hitboxes (Cajas de ataque) - Las dibujamos con su método original de la clase Hitbox 
+        // (asumiendo que GetAttackHitbox() sí te devuelve el objeto Hitbox completo)
+        player.GetAttackHitbox().Draw(RED);
+        enemy.GetAttackHitbox().Draw(RED);
+
         HUD::Draw(
             screenWidth, 
             screenHeight, 
-            playerHealth, 
-            playerMaxHealth, 
+            player.GetHealth(), 
+            player.GetMaxHealth(), 
             enemy.GetHealth(), 
             enemy.GetMaxHealth(), 
             menuFont
         );
+
+        // --- 4. PANTALLAS DE FIN DE PARTIDA ---
+        if (gameState == GAME_OVER) {
+            // Capa semitransparente para oscurecer el fondo
+            DrawRectangle(0, 0, screenWidth, screenHeight, Fade(BLACK, 0.7f));
+            DrawText("¡GAME OVER!", screenWidth / 2.0f - MeasureText("¡GAME OVER!", 60) / 2.0f, screenHeight / 2.0f - 60, 60, RED);
+            DrawText("Has sido derrotado. Presiona ESC para salir.", screenWidth / 2.0f - MeasureText("Has sido derrotado. Presiona ESC para salir.", 20) / 2.0f, screenHeight / 2.0f + 20, 20, LIGHTGRAY);
+        } 
+        else if (gameState == VICTORY) {
+            // Capa semitransparente
+            DrawRectangle(0, 0, screenWidth, screenHeight, Fade(BLACK, 0.7f));
+            DrawText("¡VICTORIA!", screenWidth / 2.0f - MeasureText("¡VICTORIA!", 60) / 2.0f, screenHeight / 2.0f - 60, 60, GREEN);
+            DrawText("¡Has vencido al enemigo! Presiona ESC para salir.", screenWidth / 2.0f - MeasureText("¡Has vencido al enemigo! Presiona ESC para salir.", 20) / 2.0f, screenHeight / 2.0f + 20, 20, LIGHTGRAY);
+        }
 
         EndDrawing();
     }

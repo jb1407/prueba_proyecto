@@ -33,7 +33,7 @@ int main() {
 
     // Instancias de los personajes
     Player player(playerStartX, playerStartY);
-    EnemyAI enemy(enemyStartX, enemyStartY, Difficulty::MEDIUM);
+    EnemyAI enemy(enemyStartX, enemyStartY, Difficulty::HARD);
 
     GameState gameState = PLAYING; // Estado inicial
 
@@ -47,7 +47,7 @@ int main() {
 
             // Detección de colisiones (Hitboxes vs Hurtbox)
             if (player.GetAttackHitbox().CheckCollision(enemy.GetHurtbox())) {
-                enemy.TakeDamage(1.5f); 
+                enemy.TakeDamage(1.0f); 
             }
 
             if (enemy.GetAttackHitbox().CheckCollision(player.GetHurtbox())) {
@@ -74,13 +74,13 @@ int main() {
         enemy.Draw(assetManager, player.getPosition());
 
         // 1. Hurtboxes (Cuerpos) - Los dibujamos en Azul semitransparente
-        DrawRectangleRec(player.GetHurtbox(), Fade(BLUE, 0.4f));
-        DrawRectangleRec(enemy.GetHurtbox(), Fade(BLUE, 0.4f));
+        //DrawRectangleRec(player.GetHurtbox(), Fade(BLUE, 0.4f));
+        //DrawRectangleRec(enemy.GetHurtbox(), Fade(BLUE, 0.4f));
 
         // 2. Attack Hitboxes (Cajas de ataque) - Las dibujamos con su método original de la clase Hitbox 
         // (asumiendo que GetAttackHitbox() sí te devuelve el objeto Hitbox completo)
-        player.GetAttackHitbox().Draw(RED);
-        enemy.GetAttackHitbox().Draw(RED);
+        //player.GetAttackHitbox().Draw(RED);
+        //enemy.GetAttackHitbox().Draw(RED);
 
         HUD::Draw(
             screenWidth, 

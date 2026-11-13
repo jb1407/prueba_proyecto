@@ -94,7 +94,7 @@ void LoadAssetsToTable(AssetManager& manager)
     manager.insert("C_Standing", LoadAsset(Img, 7, 9));
 
     Img = LoadImage("assets/sprites/character/C_MoveSet_Base/C_Punch/C_Punch.png");
-    manager.insert("C_Punch", LoadAsset(Img, 10, 4));
+    manager.insert("C_Punch", LoadAsset(Img, 10, 2));
 }
 
 Animation LoadAsset(Image& img, int TextureFrames, int FrameSpeed)

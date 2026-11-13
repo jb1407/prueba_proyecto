@@ -33,7 +33,7 @@ int main() {
 
     // Instancias de los personajes
     Player player(playerStartX, playerStartY);
-    EnemyAI enemy(enemyStartX, enemyStartY, Difficulty::MEDIUM);
+    EnemyAI enemy(enemyStartX, enemyStartY, Difficulty::HARD);
 
     GameState gameState = PLAYING; // Estado inicial
 
@@ -47,11 +47,11 @@ int main() {
 
             // Detección de colisiones (Hitboxes vs Hurtbox)
             if (player.GetAttackHitbox().CheckCollision(enemy.GetHurtbox())) {
-                enemy.TakeDamage(1.5f); 
+                enemy.TakeDamage(0.5f); 
             }
 
             if (enemy.GetAttackHitbox().CheckCollision(player.GetHurtbox())) {
-                player.TakeDamage(1.0f); 
+                player.TakeDamage(2.0f); 
             }
 
             // Comprobar condiciones de fin de partida

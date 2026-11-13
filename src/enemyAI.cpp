@@ -6,8 +6,8 @@ EnemyAI::EnemyAI(float startX, float startY, Difficulty diff) : hurtbox(startX, 
     attackHitbox(startX, startY, 45.0f, 30.0f, false) {
     size = { 115.0f, 200.0f };
     currentDifficulty = diff;
-    health = 100;
-    maxHealth = 100;
+    health = 100.0f;
+    maxHealth = 100.0f;
     position = { startX, startY };
     initialPosition = { startX, startY };
 

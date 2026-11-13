@@ -5,20 +5,38 @@
 EnemyAI::EnemyAI(float startX, float startY, Difficulty diff) {
     position = { startX, startY };
     initialPosition = position;
-    size = { 50.0f, 50.0f };
+    size = { 40.0f, 40.0f };
     currentDifficulty = diff;
-
-    // Ajustar velocidad base según la dificultad
-    if (diff == Difficulty::EASY) {
-        speed = { 1.8f, 1.8f };
-    } else if (diff == Difficulty::MEDIUM) {
-        speed = { 2.5f, 2.5f };
-    } else if (diff == Difficulty::HARD) {
-        speed = { 3.5f, 3.5f }; // Bot mucho más rápido y letal
-    }
-
     health = 100;
     maxHealth = 100;
+
+    switch (diff) {
+        case Difficulty::EASY:
+            speed = { 1.8f, 1.8f };
+            reactionDelay = 0.35f;
+            attackRange = 50.0f;     // Rango de ataque cuerpo a cuerpo para fácil
+            alertRange = 250.0f;     // Rango de visión de la IA
+            damageMultiplier = 1.25f;
+            break;
+
+        case Difficulty::MEDIUM:
+            speed = { 2.5f, 2.5f };
+            reactionDelay = 0.25f;
+            attackRange = 60.0f;
+            alertRange = 200.0f;
+            damageMultiplier = 1.00f;
+
+            break;
+
+        case Difficulty::HARD:
+            speed = { 3.5f, 3.5f };
+            reactionDelay = 0.15f;
+            attackRange = 70.0f;
+            alertRange = 150.0f;     // Un bot más peligroso te detecta desde más lejos
+            damageMultiplier = 0.75f;
+            break;
+    }
+
     currentAction = AIAction::IDLE;
     
     patrolCenter = initialPosition;
@@ -221,8 +239,10 @@ void EnemyAI::ClampToScreen(int screenWidth, int screenHeight) {
 }
 
 void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenWidth, int screenHeight) {
+    // 1. Dejar que el Árbol de Decisión mande y determine la acción actual según las condiciones del árbol
     EvaluateTree(playerPosition, isPlayerAttacking);
 
+    // 2. Ejecutar el movimiento o comportamiento físico correspondiente a la acción elegida por el árbol
     switch (currentAction) {
         case AIAction::APPROACH: {
             Vector2 dir = { playerPosition.x - position.x, playerPosition.y - position.y };
@@ -235,7 +255,7 @@ void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenW
         }
 
         case AIAction::RETREAT: {
-            // Retroceder alejándose del jugador sin perderlo de vista
+            // Retroceder alejándose del jugador tácticamente
             Vector2 dir = { position.x - playerPosition.x, position.y - playerPosition.y };
             float len = std::hypot(dir.x, dir.y);
             if (len > 0) {
@@ -267,11 +287,28 @@ void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenW
             break;
         }
 
+        case AIAction::ATTACK_LIGHT:
+        case AIAction::ATTACK_HEAVY:
+        case AIAction::BLOCK:
+        case AIAction::IDLE:
         default:
+            // Acciones de combate o estáticas (el enemigo se detiene en su posición para atacar o bloquear)
             break;
     }
 
+    // 3. Mantener al enemigo confinado dentro de los límites de la ventana
     ClampToScreen(screenWidth, screenHeight);
+}
+
+void EnemyAI::TakeDamage(float amount) {
+    // Calculamos el daño real aplicando el multiplicador de la dificultad
+    float finalDamage = amount * damageMultiplier;
+    
+    health -= finalDamage;
+    
+    if (health < 0.0f) {
+        health = 0.0f; // Evitamos números negativos
+    }
 }
 
 void EnemyAI::Draw() {

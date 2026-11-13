@@ -1,13 +1,13 @@
 # Configuración del compilador y banderas
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Iinclude
+CXXFLAGS = -std=c++17 -Wall -Iinclude -Isrc -I$(HOME)/libs/DESIGNAR/include -I$(HOME)/libs/DESIGNAR/src -I$(HOME)/libs/DESIGNAR
 
 # Banderas del sistema necesarias para Raylib en WSL/Linux, 
 # apuntando explícitamente a la biblioteca estática local en lib/
 LDFLAGS = lib/libraylib.a -lGL -lm -lpthread -ldl -lrt -lX11
 
-# Archivos fuente y objeto
-SRC = $(wildcard src/*.cpp)
+# Archivos fuente y objeto (excluyendo automáticamente samples y tests de DESIGNAR)
+SRC = $(shell find src -name "*.cpp" -not -path "*/samples/*" -not -path "*/tests/*")
 OBJ = $(SRC:.cpp=.o)
 TARGET = game
 
@@ -26,6 +26,7 @@ $(TARGET): $(OBJ)
 run: all
 	./$(TARGET)
 
-# Limpieza de binarios y archivos objeto
+# Limpieza total de binarios y archivos objeto
 clean:
-	rm -f src/*.o $(TARGET)
+	find src -name "*.o" -delete
+	rm -f $(TARGET)

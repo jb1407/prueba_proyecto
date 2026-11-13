@@ -1,30 +1,46 @@
 #ifndef PLAYER_HPP
 #define PLAYER_HPP
 
-#include "raylib.h" // Necesario para Vector2 y funciones de teclado
+#include "raylib.h"
+#include "Mechanics.hpp" // Esto ya incluye LoadAssets.hpp automáticamente
 
 class Player {
 private:
-    float x, y;         // Posición en la pantalla
-    float speed;        // Velocidad de movimiento
+    Vector2 position;
+    Vector2 size;
+    float speed;
+    float health;
+    float maxHealth;
+
+    // --- Nuevos atributos para las animaciones y mecánicas ---
+    MoveSetBase currentMove;
+    CombatManager combatManager;
+    bool flipX;
+
+    // --- Atributos para el movimiento de Backward (esquive con impulso) ---
+    Vector2 dodgeDir;
+    float dodgeSpeed;
 
 public:
     // Constructor
     Player(float startX, float startY);
 
-    // Método de actualización que maneja el teclado automáticamente
-    void Update();
+    // Métodos principales
+    void Update(AssetManager& assetManager);
+    void TakeDamage(float amount);
+    bool IsDead() const { return health <= 0.0f; }
 
-    // Métodos de movimiento individuales
-    void moverIzquierda();
-    void moverDerecha();
-    void moverArriba();
-    void moverAbajo();
+    // --- Getters compatibles ---
+    float getX() const { return position.x; }
+    float getY() const { return position.y; }
+    Vector2 getPosition() const { return position; }
+    
+    Rectangle GetRectangle() const { 
+        return { position.x, position.y, size.x, size.y }; 
+    }
 
-    // Métodos para consultar la posición actual
-    float getX() const;
-    float getY() const;
-    Vector2 getPosition() const; // ¡Añadido para el bot y colisiones!
+    float GetHealth() const { return health; }
+    float GetMaxHealth() const { return maxHealth; }
 };
 
 #endif

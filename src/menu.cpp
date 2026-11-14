@@ -1,17 +1,14 @@
-#include <iostream> // Asegúrate de tener esto arriba en menu.cpp
+#include <iostream>
 #include "raylib.h"
 #include "menu.hpp"
 
 void ActualizarMenu(GameScreen *currentScreen, int *selectedDifficulty) {
     Vector2 mousePos = GetMousePosition();
-    
-    // Variable estática para evitar que se dispare múltiples veces seguidas mientras mantienes presionado
     static bool clickBloqueado = false;
 
-    // Si el usuario presiona el click izquierdo del mouse
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         if (!clickBloqueado) {
-            clickBloqueado = true; // Bloqueamos hasta que suelte el botón
+            clickBloqueado = true;
 
             switch(*currentScreen) {
                 case SCREEN_MAIN_MENU:
@@ -53,7 +50,23 @@ void ActualizarMenu(GameScreen *currentScreen, int *selectedDifficulty) {
                     }
                     break;
 
-                case SCREEN_CHARACTER_SELECT:
+                case SCREEN_CHARACTER_SELECT: {
+                    // Botón Volver (Izquierda)
+                    Rectangle btnVolver = {50, 400, 80, 30};
+                    // Botón Comenzar / Jugar (Derecha)
+                    Rectangle btnComenzar = {670, 400, 80, 30};
+
+                    if (mousePos.x >= btnVolver.x && mousePos.x <= btnVolver.x + btnVolver.width &&
+                        mousePos.y >= btnVolver.y && mousePos.y <= btnVolver.y + btnVolver.height) {
+                        *currentScreen = SCREEN_DIFFICULTY_SELECT; // O al modo según prefieras
+                    }
+                    else if (mousePos.x >= btnComenzar.x && mousePos.x <= btnComenzar.x + btnComenzar.width &&
+                             mousePos.y >= btnComenzar.y && mousePos.y <= btnComenzar.y + btnComenzar.height) {
+                        *currentScreen = SCREEN_LOADING; // ¡Dispara la pantalla de carga!
+                    }
+                    break;
+                }
+
                 case SCREEN_INSTRUCTIONS:
                     if (mousePos.x >= 50 && mousePos.x <= 130 && mousePos.y >= 400 && mousePos.y <= 430) {
                         *currentScreen = SCREEN_MAIN_MENU;
@@ -66,131 +79,65 @@ void ActualizarMenu(GameScreen *currentScreen, int *selectedDifficulty) {
         }
     } 
     else {
-        // Cuando el usuario suelta el botón del mouse, reseteamos el bloqueo
         clickBloqueado = false;
     }
 }
 
-// Lógica de renderizado visual con estilo oscuro y acentos amarillos
-void DibujarMenu(GameScreen currentScreen, int selectedDifficulty)
-{
+void DibujarMenu(GameScreen currentScreen, int selectedDifficulty) {
     const int screenWidth = 800;
+    const int screenHeight = 450;
 
     BeginDrawing();
-    ClearBackground((Color){15, 15, 18, 255}); // Fondo oscuro profundo
+    ClearBackground((Color){15, 15, 18, 255});
 
-    // Obtenemos la posición del mouse una sola vez por frame para evaluar colisiones
     Vector2 mousePos = GetMousePosition();
 
     Color grisMetal = (Color){180, 180, 190, 255};
     Color grisOscuro = (Color){40, 40, 45, 255};
-    Color grisHover = (Color){65, 65, 75, 255}; // Color cuando el mouse está encima
+    Color grisHover = (Color){65, 65, 75, 255};
     Color amarilloEspada = (Color){245, 220, 40, 255};
     Color textoClaro = (Color){230, 230, 235, 255};
 
-    switch (currentScreen)
-    {
-    case SCREEN_MAIN_MENU:
-    {
-        DrawText("ARENA FIGHTER 2D", screenWidth / 2 - MeasureText("ARENA FIGHTER 2D", 32) / 2 + 2, 82, 32, BLACK);
-        DrawText("ARENA FIGHTER 2D", screenWidth / 2 - MeasureText("ARENA FIGHTER 2D", 32) / 2, 80, 32, amarilloEspada);
+    switch (currentScreen) {
+        case SCREEN_MAIN_MENU: {
+            int fontSize = 46; // Nuevo tamaño de letra más grande
+            int posY = 110;    // Posición vertical para acercarlo al botón Jugar
+
+            DrawText("ARENA FIGHTER 2D", screenWidth / 2 - MeasureText("ARENA FIGHTER 2D", fontSize) / 2 + 2, posY + 2, fontSize, BLACK);
+            DrawText("ARENA FIGHTER 2D", screenWidth / 2 - MeasureText("ARENA FIGHTER 2D", fontSize) / 2, posY, fontSize, amarilloEspada);
 
         // 1. Definimos el rectángulo del botón una sola vez para usarlo tanto en el dibujo como en la colisión
-        Rectangle btnJugar = {300, 220, 200, 40};
 
-        // 2. Comprobación manual de la hitbox (reemplazando a CheckCollisionPointRec)
-        bool hoverJugar = (mousePos.x >= btnJugar.x &&
-                           mousePos.x <= (btnJugar.x + btnJugar.width) &&
-                           mousePos.y >= btnJugar.y &&
-                           mousePos.y <= (btnJugar.y + btnJugar.height));
+            Rectangle btnJugar = {300, 220, 200, 40};
+            bool hoverJugar = (mousePos.x >= btnJugar.x && mousePos.x <= btnJugar.x + btnJugar.width &&
+                               mousePos.y >= btnJugar.y && mousePos.y <= btnJugar.y + btnJugar.height);
+            DrawRectangleRec(btnJugar, hoverJugar ? grisHover : grisOscuro);
+            DrawRectangleLines((int)btnJugar.x, (int)btnJugar.y, (int)btnJugar.width, (int)btnJugar.height, hoverJugar ? amarilloEspada : grisMetal);
+            DrawText("Jugar", screenWidth / 2 - MeasureText("Jugar", 16) / 2, 232, 16, textoClaro);
 
-        // 3. Dibujado usando esa misma variable
-        DrawRectangleRec(btnJugar, hoverJugar ? grisHover : grisOscuro);
-        DrawRectangleLines((int)btnJugar.x, (int)btnJugar.y, (int)btnJugar.width, (int)btnJugar.height, hoverJugar ? amarilloEspada : grisMetal);
-        DrawText("Jugar", screenWidth / 2 - MeasureText("Jugar", 16) / 2, 232, 16, textoClaro);
+            Rectangle btnInstrucciones = {300, 280, 200, 40};
+            bool hoverInstrucciones = CheckCollisionPointRec(mousePos, btnInstrucciones);
+            DrawRectangleRec(btnInstrucciones, hoverInstrucciones ? grisHover : grisOscuro);
+            DrawRectangleLines((int)btnInstrucciones.x, (int)btnInstrucciones.y, (int)btnInstrucciones.width, (int)btnInstrucciones.height, hoverInstrucciones ? amarilloEspada : grisMetal);
+            DrawText("Instrucciones", screenWidth / 2 - MeasureText("Instrucciones", 16) / 2, 292, 16, textoClaro);
+            break;
+        }
 
-        // Botón Instrucciones
-        Rectangle btnInstrucciones = {300, 280, 200, 40};
-        bool hoverInstrucciones = CheckCollisionPointRec(mousePos, btnInstrucciones);
-        DrawRectangleRec(btnInstrucciones, hoverInstrucciones ? grisHover : grisOscuro);
-        DrawRectangleLines((int)btnInstrucciones.x, (int)btnInstrucciones.y, (int)btnInstrucciones.width, (int)btnInstrucciones.height, hoverInstrucciones ? amarilloEspada : grisMetal);
-        DrawText("Instrucciones", screenWidth / 2 - MeasureText("Instrucciones", 16) / 2, 292, 16, textoClaro);
-        break;
-    }
+        case SCREEN_MODE_SELECT: {
+            DrawText("SELECCIONA MODO", screenWidth / 2 - MeasureText("SELECCIONA MODO", 22) / 2, 80, 22, amarilloEspada);
 
-    case SCREEN_MODE_SELECT:
-    {
-        DrawText("SELECCIONA MODO", screenWidth / 2 - MeasureText("SELECCIONA MODO", 22) / 2, 80, 22, amarilloEspada);
+            Rectangle btnModo1 = {300, 180, 200, 40};
+            bool hoverModo1 = CheckCollisionPointRec(mousePos, btnModo1);
+            DrawRectangleRec(btnModo1, hoverModo1 ? grisHover : grisOscuro);
+            DrawRectangleLines((int)btnModo1.x, (int)btnModo1.y, (int)btnModo1.width, (int)btnModo1.height, hoverModo1 ? amarilloEspada : grisMetal);
+            DrawText("1 Jugador (vs Bot)", screenWidth / 2 - MeasureText("1 Jugador (vs Bot)", 14) / 2, 193, 14, textoClaro);
 
-        Rectangle btnModo1 = {300, 180, 200, 40};
-        bool hoverModo1 = CheckCollisionPointRec(mousePos, btnModo1);
-        DrawRectangleRec(btnModo1, hoverModo1 ? grisHover : grisOscuro);
-        DrawRectangleLines((int)btnModo1.x, (int)btnModo1.y, (int)btnModo1.width, (int)btnModo1.height, hoverModo1 ? amarilloEspada : grisMetal);
-        DrawText("1 Jugador (vs Bot)", screenWidth / 2 - MeasureText("1 Jugador (vs Bot)", 14) / 2, 193, 14, textoClaro);
+            Rectangle btnModo2 = {300, 240, 200, 40};
+            bool hoverModo2 = CheckCollisionPointRec(mousePos, btnModo2);
+            DrawRectangleRec(btnModo2, hoverModo2 ? grisHover : grisOscuro);
+            DrawRectangleLines((int)btnModo2.x, (int)btnModo2.y, (int)btnModo2.width, (int)btnModo2.height, hoverModo2 ? amarilloEspada : grisMetal);
+            DrawText("2 Jugadores (Local)", screenWidth / 2 - MeasureText("2 Jugadores (Local)", 14) / 2, 253, 14, textoClaro);
 
-        Rectangle btnModo2 = {300, 240, 200, 40};
-        bool hoverModo2 = CheckCollisionPointRec(mousePos, btnModo2);
-        DrawRectangleRec(btnModo2, hoverModo2 ? grisHover : grisOscuro);
-        DrawRectangleLines((int)btnModo2.x, (int)btnModo2.y, (int)btnModo2.width, (int)btnModo2.height, hoverModo2 ? amarilloEspada : grisMetal);
-        DrawText("2 Jugadores (Local)", screenWidth / 2 - MeasureText("2 Jugadores (Local)", 14) / 2, 253, 14, textoClaro);
-
-        Rectangle btnVolver = {50, 400, 80, 30};
-        bool hoverVolver = CheckCollisionPointRec(mousePos, btnVolver);
-        DrawRectangleRec(btnVolver, hoverVolver ? grisHover : grisOscuro);
-        DrawRectangleLines((int)btnVolver.x, (int)btnVolver.y, (int)btnVolver.width, (int)btnVolver.height, hoverVolver ? amarilloEspada : grisMetal);
-        DrawText("Volver", 72, 408, 12, textoClaro);
-        break;
-    }
-
-    case SCREEN_DIFFICULTY_SELECT:
-    {
-        DrawText("ELIGE LA DIFICULTAD", screenWidth / 2 - MeasureText("ELIGE LA DIFICULTAD", 20) / 2, 80, 20, amarilloEspada);
-
-        Rectangle btnFacil = {300, 160, 200, 40};
-        bool hoverFacil = CheckCollisionPointRec(mousePos, btnFacil);
-        DrawRectangleRec(btnFacil, hoverFacil ? grisHover : grisOscuro);
-        DrawRectangleLines((int)btnFacil.x, (int)btnFacil.y, (int)btnFacil.width, (int)btnFacil.height, hoverFacil ? amarilloEspada : grisMetal);
-        DrawText("Facil", screenWidth / 2 - MeasureText("Facil", 14) / 2, 173, 14, textoClaro);
-
-        Rectangle btnMedio = {300, 220, 200, 40};
-        bool hoverMedio = CheckCollisionPointRec(mousePos, btnMedio);
-        DrawRectangleRec(btnMedio, hoverMedio ? grisHover : grisOscuro);
-        DrawRectangleLines((int)btnMedio.x, (int)btnMedio.y, (int)btnMedio.width, (int)btnMedio.height, hoverMedio ? amarilloEspada : grisMetal);
-        DrawText("Medio", screenWidth / 2 - MeasureText("Medio", 14) / 2, 233, 14, textoClaro);
-
-        Rectangle btnDificil = {300, 280, 200, 40};
-        bool hoverDificil = CheckCollisionPointRec(mousePos, btnDificil);
-        DrawRectangleRec(btnDificil, hoverDificil ? grisHover : grisOscuro);
-        DrawRectangleLines((int)btnDificil.x, (int)btnDificil.y, (int)btnDificil.width, (int)btnDificil.height, hoverDificil ? amarilloEspada : grisMetal);
-        DrawText("Dificil", screenWidth / 2 - MeasureText("Dificil", 14) / 2, 293, 14, textoClaro);
-
-        Rectangle btnVolver = {50, 400, 80, 30};
-        bool hoverVolver = CheckCollisionPointRec(mousePos, btnVolver);
-        DrawRectangleRec(btnVolver, hoverVolver ? grisHover : grisOscuro);
-        DrawRectangleLines((int)btnVolver.x, (int)btnVolver.y, (int)btnVolver.width, (int)btnVolver.height, hoverVolver ? amarilloEspada : grisMetal);
-        DrawText("Volver", 72, 408, 12, textoClaro);
-        break;
-    }
-
-    case SCREEN_CHARACTER_SELECT: {
-            // 1. Título más grande (cambiamos el tamaño de 22 a 28)
-            DrawText("ELIGE TU JUGADOR", screenWidth/2 - MeasureText("ELIGE TU JUGADOR", 28)/2, 35, 28, amarilloEspada);
-            
-            // --- JUGADOR 1 (Izquierda) ---
-            DrawText("NOMBRE", 260 - MeasureText("NOMBRE", 16)/2, 95, 16, grisMetal);
-            // Cuadro más grande: ancho 160, alto 130 (antes era 120x100)
-            DrawRectangleLines(180, 120, 160, 130, grisMetal); 
-            DrawText("<", 150, 170, 24, amarilloEspada); // Flecha izquierda desplazada acorde al tamaño
-            DrawText(">", 345, 170, 24, amarilloEspada); // Flecha derecha desplazada acorde al tamaño
-
-            // --- OPONENTE (Derecha) ---
-            DrawText("OPONENTE", 540 - MeasureText("OPONENTE", 16)/2, 95, 16, grisMetal);
-            // Cuadro más grande: ancho 160, alto 130
-            DrawRectangleLines(460, 120, 160, 130, grisMetal); 
-            DrawText("<", 430, 170, 24, amarilloEspada); 
-            DrawText(">", 625, 170, 24, amarilloEspada); 
-
-            // Botón Volver (esquina inferior izquierda)
             Rectangle btnVolver = {50, 400, 80, 30};
             bool hoverVolver = CheckCollisionPointRec(mousePos, btnVolver);
             DrawRectangleRec(btnVolver, hoverVolver ? grisHover : grisOscuro);
@@ -199,27 +146,88 @@ void DibujarMenu(GameScreen currentScreen, int selectedDifficulty)
             break;
         }
 
-    case SCREEN_INSTRUCTIONS:
-    {
-        DrawText("INSTRUCCIONES", screenWidth / 2 - MeasureText("INSTRUCCIONES", 20) / 2, 40, 20, amarilloEspada);
-        DrawText("- Combate a mano limpia y con moveset base defensivo.", 100, 110, 14, textoClaro);
-        DrawText("- Las armas aparecen aleatoriamente en el escenario.", 100, 140, 14, textoClaro);
-        DrawText("- Las armas tienen tiempo de vida limitado.", 100, 170, 14, textoClaro);
+        case SCREEN_DIFFICULTY_SELECT: {
+            DrawText("ELIGE LA DIFICULTAD", screenWidth / 2 - MeasureText("ELIGE LA DIFICULTAD", 20) / 2, 80, 20, amarilloEspada);
 
-        Rectangle btnVolver = {50, 400, 80, 30};
-        bool hoverVolver = CheckCollisionPointRec(mousePos, btnVolver);
-        DrawRectangleRec(btnVolver, hoverVolver ? grisHover : grisOscuro);
-        DrawRectangleLines((int)btnVolver.x, (int)btnVolver.y, (int)btnVolver.width, (int)btnVolver.height, hoverVolver ? amarilloEspada : grisMetal);
-        DrawText("Volver", 72, 408, 12, textoClaro);
-        break;
+            Rectangle btnFacil = {300, 160, 200, 40};
+            bool hoverFacil = CheckCollisionPointRec(mousePos, btnFacil);
+            DrawRectangleRec(btnFacil, hoverFacil ? grisHover : grisOscuro);
+            DrawRectangleLines((int)btnFacil.x, (int)btnFacil.y, (int)btnFacil.width, (int)btnFacil.height, hoverFacil ? amarilloEspada : grisMetal);
+            DrawText("Facil", screenWidth / 2 - MeasureText("Facil", 14) / 2, 173, 14, textoClaro);
+
+            Rectangle btnMedio = {300, 220, 200, 40};
+            bool hoverMedio = CheckCollisionPointRec(mousePos, btnMedio);
+            DrawRectangleRec(btnMedio, hoverMedio ? grisHover : grisOscuro);
+            DrawRectangleLines((int)btnMedio.x, (int)btnMedio.y, (int)btnMedio.width, (int)btnMedio.height, hoverMedio ? amarilloEspada : grisMetal);
+            DrawText("Medio", screenWidth / 2 - MeasureText("Medio", 14) / 2, 233, 14, textoClaro);
+
+            Rectangle btnDificil = {300, 280, 200, 40};
+            bool hoverDificil = CheckCollisionPointRec(mousePos, btnDificil);
+            DrawRectangleRec(btnDificil, hoverDificil ? grisHover : grisOscuro);
+            DrawRectangleLines((int)btnDificil.x, (int)btnDificil.y, (int)btnDificil.width, (int)btnDificil.height, hoverDificil ? amarilloEspada : grisMetal);
+            DrawText("Dificil", screenWidth / 2 - MeasureText("Dificil", 14) / 2, 293, 14, textoClaro);
+
+            Rectangle btnVolver = {50, 400, 80, 30};
+            bool hoverVolver = CheckCollisionPointRec(mousePos, btnVolver);
+            DrawRectangleRec(btnVolver, hoverVolver ? grisHover : grisOscuro);
+            DrawRectangleLines((int)btnVolver.x, (int)btnVolver.y, (int)btnVolver.width, (int)btnVolver.height, hoverVolver ? amarilloEspada : grisMetal);
+            DrawText("Volver", 72, 408, 12, textoClaro);
+            break;
+        }
+
+        case SCREEN_CHARACTER_SELECT: {
+            DrawText("ELIGE TU JUGADOR", screenWidth/2 - MeasureText("ELIGE TU JUGADOR", 28)/2, 35, 28, amarilloEspada);
+            
+            // JUGADOR 1
+            DrawText("NOMBRE", 260 - MeasureText("NOMBRE", 16)/2, 95, 16, grisMetal);
+            DrawRectangleLines(180, 120, 160, 130, grisMetal); 
+            DrawText("<", 150, 170, 24, amarilloEspada);
+            DrawText(">", 345, 170, 24, amarilloEspada);
+
+            // OPONENTE
+            DrawText("OPONENTE", 540 - MeasureText("OPONENTE", 16)/2, 95, 16, grisMetal);
+            DrawRectangleLines(460, 120, 160, 130, grisMetal); 
+            DrawText("<", 430, 170, 24, amarilloEspada); 
+            DrawText(">", 625, 170, 24, amarilloEspada); 
+
+            // Botón Volver (Izquierda)
+            Rectangle btnVolver = {50, 400, 80, 30};
+            bool hoverVolver = CheckCollisionPointRec(mousePos, btnVolver);
+            DrawRectangleRec(btnVolver, hoverVolver ? grisHover : grisOscuro);
+            DrawRectangleLines((int)btnVolver.x, (int)btnVolver.y, (int)btnVolver.width, (int)btnVolver.height, hoverVolver ? amarilloEspada : grisMetal);
+            DrawText("Volver", 72, 408, 12, textoClaro);
+
+            // Botón Comenzar / Jugar (Derecha)
+            Rectangle btnComenzar = {670, 400, 80, 30};
+            bool hoverComenzar = CheckCollisionPointRec(mousePos, btnComenzar);
+            DrawRectangleRec(btnComenzar, hoverComenzar ? grisHover : grisOscuro);
+            DrawRectangleLines((int)btnComenzar.x, (int)btnComenzar.y, (int)btnComenzar.width, (int)btnComenzar.height, hoverComenzar ? amarilloEspada : grisMetal);
+            DrawText("Jugar", 694, 408, 12, amarilloEspada);
+            break;
+        }
+
+        case SCREEN_INSTRUCTIONS: {
+            DrawText("INSTRUCCIONES", screenWidth / 2 - MeasureText("INSTRUCCIONES", 20) / 2, 35, 20, amarilloEspada);
+            
+            // Texto detallado de controles y reglas
+            DrawText("- Movimiento: Usa las flechas o teclas A/D para desplazarte.", 80, 95, 13, textoClaro);
+            DrawText("- Ataque básico: Presiona Espacio / Click para golpear con la espada.", 80, 130, 13, textoClaro);
+            DrawText("- Sistema de Combate: Gestiona tus hitboxes y tiempos de recuperación.", 80, 165, 13, textoClaro);
+            DrawText("- Armas: Las armas aparecen de forma aleatoria en el escenario.", 80, 200, 13, textoClaro);
+            DrawText("- Duración: Las armas recolectadas tienen un tiempo de vida limitado.", 80, 235, 13, textoClaro);
+            DrawText("- Objetivo: Reduce la barra de vida de tu oponente a cero para ganar.", 80, 270, 13, textoClaro);
+
+            Rectangle btnVolver = {50, 400, 80, 30};
+            bool hoverVolver = CheckCollisionPointRec(mousePos, btnVolver);
+            DrawRectangleRec(btnVolver, hoverVolver ? grisHover : grisOscuro);
+            DrawRectangleLines((int)btnVolver.x, (int)btnVolver.y, (int)btnVolver.width, (int)btnVolver.height, hoverVolver ? amarilloEspada : grisMetal);
+            DrawText("Volver", 72, 408, 12, textoClaro);
+            break;
+        }
+
+        default:
+            break;
     }
-
-    default:
-        break;
-    }
-
-    // Opcional: Esto te muestra las coordenadas del mouse en una esquina para verificar la precisión
-    DrawText(TextFormat("X: %.0f Y: %.0f", mousePos.x, mousePos.y), 10, 430, 10, GRAY);
 
     EndDrawing();
 }

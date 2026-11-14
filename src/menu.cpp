@@ -2,7 +2,7 @@
 #include "raylib.h"
 #include "menu.hpp"
 
-void ActualizarMenu(GameScreen *currentScreen, int *selectedDifficulty) {
+void ActualizarMenu(GameScreen *currentScreen, int *selectedDifficulty, bool *esDosJugadores) {
     Vector2 mousePos = GetMousePosition();
     static bool clickBloqueado = false;
 
@@ -22,10 +22,12 @@ void ActualizarMenu(GameScreen *currentScreen, int *selectedDifficulty) {
 
                 case SCREEN_MODE_SELECT:
                     if (mousePos.x >= 300 && mousePos.x <= 500 && mousePos.y >= 180 && mousePos.y <= 220) {
-                        *currentScreen = SCREEN_DIFFICULTY_SELECT;
+                        *esDosJugadores = false;                    // Modo 1 Jugador
+                        *currentScreen = SCREEN_DIFFICULTY_SELECT;  // Va a dificultad
                     }
                     else if (mousePos.x >= 300 && mousePos.x <= 500 && mousePos.y >= 240 && mousePos.y <= 280) {
-                        *currentScreen = SCREEN_CHARACTER_SELECT;
+                        *esDosJugadores = true;                     // Modo 2 Jugadores
+                        *currentScreen = SCREEN_CHARACTER_SELECT;   // Salta directo a personajes
                     }
                     else if (mousePos.x >= 50 && mousePos.x <= 130 && mousePos.y >= 400 && mousePos.y <= 430) {
                         *currentScreen = SCREEN_MAIN_MENU;
@@ -58,7 +60,13 @@ void ActualizarMenu(GameScreen *currentScreen, int *selectedDifficulty) {
 
                     if (mousePos.x >= btnVolver.x && mousePos.x <= btnVolver.x + btnVolver.width &&
                         mousePos.y >= btnVolver.y && mousePos.y <= btnVolver.y + btnVolver.height) {
-                        *currentScreen = SCREEN_DIFFICULTY_SELECT; // O al modo según prefieras
+                        
+                        // --- SOLUCIÓN DE LÓGICA DE RETROCESO ---
+                        if (*esDosJugadores) {
+                            *currentScreen = SCREEN_MODE_SELECT;       // Si es 2P, vuelve directo al selector de modos
+                        } else {
+                            *currentScreen = SCREEN_DIFFICULTY_SELECT; // Si es 1P, vuelve a la dificultad
+                        }
                     }
                     else if (mousePos.x >= btnComenzar.x && mousePos.x <= btnComenzar.x + btnComenzar.width &&
                              mousePos.y >= btnComenzar.y && mousePos.y <= btnComenzar.y + btnComenzar.height) {
@@ -100,13 +108,11 @@ void DibujarMenu(GameScreen currentScreen, int selectedDifficulty) {
 
     switch (currentScreen) {
         case SCREEN_MAIN_MENU: {
-            int fontSize = 46; // Nuevo tamaño de letra más grande
-            int posY = 110;    // Posición vertical para acercarlo al botón Jugar
+            int fontSize = 46; 
+            int posY = 110;    
 
             DrawText("ARENA FIGHTER 2D", screenWidth / 2 - MeasureText("ARENA FIGHTER 2D", fontSize) / 2 + 2, posY + 2, fontSize, BLACK);
             DrawText("ARENA FIGHTER 2D", screenWidth / 2 - MeasureText("ARENA FIGHTER 2D", fontSize) / 2, posY, fontSize, amarilloEspada);
-
-        // 1. Definimos el rectángulo del botón una sola vez para usarlo tanto en el dibujo como en la colisión
 
             Rectangle btnJugar = {300, 220, 200, 40};
             bool hoverJugar = (mousePos.x >= btnJugar.x && mousePos.x <= btnJugar.x + btnJugar.width &&
@@ -178,26 +184,22 @@ void DibujarMenu(GameScreen currentScreen, int selectedDifficulty) {
         case SCREEN_CHARACTER_SELECT: {
             DrawText("ELIGE TU JUGADOR", screenWidth/2 - MeasureText("ELIGE TU JUGADOR", 28)/2, 35, 28, amarilloEspada);
             
-            // JUGADOR 1
             DrawText("NOMBRE", 260 - MeasureText("NOMBRE", 16)/2, 95, 16, grisMetal);
             DrawRectangleLines(180, 120, 160, 130, grisMetal); 
             DrawText("<", 150, 170, 24, amarilloEspada);
             DrawText(">", 345, 170, 24, amarilloEspada);
 
-            // OPONENTE
             DrawText("OPONENTE", 540 - MeasureText("OPONENTE", 16)/2, 95, 16, grisMetal);
             DrawRectangleLines(460, 120, 160, 130, grisMetal); 
             DrawText("<", 430, 170, 24, amarilloEspada); 
             DrawText(">", 625, 170, 24, amarilloEspada); 
 
-            // Botón Volver (Izquierda)
             Rectangle btnVolver = {50, 400, 80, 30};
             bool hoverVolver = CheckCollisionPointRec(mousePos, btnVolver);
             DrawRectangleRec(btnVolver, hoverVolver ? grisHover : grisOscuro);
             DrawRectangleLines((int)btnVolver.x, (int)btnVolver.y, (int)btnVolver.width, (int)btnVolver.height, hoverVolver ? amarilloEspada : grisMetal);
             DrawText("Volver", 72, 408, 12, textoClaro);
 
-            // Botón Comenzar / Jugar (Derecha)
             Rectangle btnComenzar = {670, 400, 80, 30};
             bool hoverComenzar = CheckCollisionPointRec(mousePos, btnComenzar);
             DrawRectangleRec(btnComenzar, hoverComenzar ? grisHover : grisOscuro);
@@ -209,7 +211,6 @@ void DibujarMenu(GameScreen currentScreen, int selectedDifficulty) {
         case SCREEN_INSTRUCTIONS: {
             DrawText("INSTRUCCIONES", screenWidth / 2 - MeasureText("INSTRUCCIONES", 20) / 2, 35, 20, amarilloEspada);
             
-            // Texto detallado de controles y reglas
             DrawText("- Movimiento: Usa las flechas o teclas A/D para desplazarte.", 80, 95, 13, textoClaro);
             DrawText("- Ataque básico: Presiona Espacio / Click para golpear con la espada.", 80, 130, 13, textoClaro);
             DrawText("- Sistema de Combate: Gestiona tus hitboxes y tiempos de recuperación.", 80, 165, 13, textoClaro);

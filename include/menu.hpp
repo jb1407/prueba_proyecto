@@ -15,8 +15,8 @@ typedef enum {
     SCREEN_GAME_PLAYING
 } GameScreen;
 
-// Declaración de las funciones públicas del menú
-void ActualizarMenu(GameScreen *currentScreen, int *selectedDifficulty);
+// Declaración de las funciones públicas del menú (añadido bool *esDosJugadores)
+void ActualizarMenu(GameScreen *currentScreen, int *selectedDifficulty, bool *esDosJugadores);
 void DibujarMenu(GameScreen currentScreen, int selectedDifficulty);
 
 #endif

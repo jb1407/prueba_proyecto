@@ -1,92 +1,38 @@
 #include "raylib.h"
-#include "LoadAssets.hpp"
-#include "Mechanics.hpp"
-#include "Player.hpp"
-#include "enemyAI.hpp"
-
-/*int main() {
-    // 1. Inicializar la ventana de Raylib
-    const int screenWidth = 800;
-    const int screenHeight = 600;
-    InitWindow(screenWidth, screenHeight, "Arena Fighter - Prueba de Integracion");
-    SetTargetFPS(60);
-
-    // 2. Inicializar el administrador de assets y cargar la tabla hash
-    AssetManager assetManager;
-    LoadAssetsToTable(assetManager);
-
-    // 3. Crear una instancia del jugador en el centro de la pantalla
-    // (Pasamos la posición inicial X y Y)
-    Player player(screenWidth / 2.0f - 20.0f, screenHeight / 2.0f - 20.0f);
-
-    // 4. Bucle principal del juego
-    while (!WindowShouldClose()) {
-        
-        // --- Actualización de lógica e inputs ---
-        // El jugador lee el teclado, actualiza su posición y le pide al CombatManager 
-        // que dibuje la animación correspondiente usando la tabla hash.
-        player.Update(assetManager);
-
-        // --- Dibujado en pantalla ---
-        BeginDrawing();
-        ClearBackground(DARKGRAY);
-
-        // Texto de guía en la interfaz
-        DrawText("Usa W, A, S, D para moverte y ESPACIO para golpear", 20, 20, 18, LIGHTGRAY);
-        
-        // Opcional: Dibujar el rectángulo de colisión del jugador para depurar
-        DrawRectangleLinesEx(player.GetRectangle(), 1, GREEN);
-
-        EndDrawing();
-    }
-
-    // 5. Cierre de la aplicación
-    // Nota: El destructor de AssetManager (~AssetManager) se encargará 
-    // automáticamente de liberar las texturas de la GPU al salir del ámbito.
-    CloseWindow();
-
-    return 0;
-}*/
+#include "menu.hpp"
 
 int main() {
+    // Inicialización de la ventana (ajustada a la resolución estándar de 800x450 usada en el menú)
     const int screenWidth = 800;
-    const int screenHeight = 600;
-
-    InitWindow(screenWidth, screenHeight, "Prueba Aislada - Rectángulos y Colisiones");
+    const int screenHeight = 450;
+    
+    InitWindow(screenWidth, screenHeight, "Arena Fighter 2D - Menu Test");
     SetTargetFPS(60);
 
-    // Posiciones e instancias básicas usando solo rectángulos de Raylib
-    Vector2 playerPos = { 200.0f, 300.0f };
-    Vector2 playerSize = { 40.0f, 40.0f };
-    float playerSpeed = 4.0f;
+    // Estado inicial y variables de configuración del menú
+    GameScreen currentScreen = SCREEN_MAIN_MENU;
+    int selectedDifficulty = 0; // 0: Fácil, 1: Medio, 2: Difícil
 
-    EnemyAI enemy(500.0f, 300.0f, Difficulty::MEDIUM);
-
+    // Bucle principal del juego
     while (!WindowShouldClose()) {
-        // Movimiento básico de prueba
-        if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) playerPos.x += playerSpeed;
-        if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) playerPos.x -= playerSpeed;
-        if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) playerPos.y -= playerSpeed;
-        if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) playerPos.y += playerSpeed;
+        // 1. Actualizar lógica de botones y pantallas
+        ActualizarMenu(&currentScreen, &selectedDifficulty);
 
-        bool isPlayerAttacking = IsKeyPressed(KEY_SPACE);
-        enemy.Update(playerPos, isPlayerAttacking, screenWidth, screenHeight);
-
-        BeginDrawing();
-        ClearBackground(GRAY);
-
-        DrawText("PRUEBA DE RECTÁNGULOS", 10, 10, 20, YELLOW);
-        DrawText("Flechas/WASD: Mover cuadro | SPACE: Simular Ataque", 10, 35, 16, LIGHTGRAY);
-
-        // Dibujar jugador como rectángulo azul
-        DrawRectangleV(playerPos, playerSize, BLUE);
-
-        // Dibujar enemigo (utiliza su propio método Draw)
-        enemy.Draw();
-
-        EndDrawing();
+        // 2. Renderizado según el estado actual
+        if (currentScreen == SCREEN_GAME_PLAYING) {
+            // Pantalla de prueba cuando inicia el combate
+            BeginDrawing();
+            ClearBackground((Color){15, 15, 18, 255});
+            DrawText("¡COMBATE EN CURSO (JUEGO)!", screenWidth / 2 - MeasureText("¡COMBATE EN CURSO (JUEGO)!", 24) / 2, screenHeight / 2 - 20, 24, (Color){245, 220, 40, 255});
+            DrawText(TextFormat("Dificultad seleccionada: %d", selectedDifficulty), screenWidth / 2 - MeasureText("Dificultad seleccionada: %d", 16) / 2, screenHeight / 2 + 20, 16, (Color){180, 180, 190, 255});
+            EndDrawing();
+        } else {
+            // Renderizar las pantallas del menú mediante tu archivo menu.cpp
+            DibujarMenu(currentScreen, selectedDifficulty);
+        }
     }
 
+    // Cerrar ventana y recursos
     CloseWindow();
     return 0;
 }

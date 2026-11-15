@@ -12,71 +12,77 @@ void ActualizarMenu(GameScreen *currentScreen, int *selectedDifficulty, bool *es
 
             switch(*currentScreen) {
                 case SCREEN_MAIN_MENU:
-                    if (mousePos.x >= 300 && mousePos.x <= 500 && mousePos.y >= 220 && mousePos.y <= 260) {
+                    // Botón Jugar (600, 440, 400, 80)
+                    if (mousePos.x >= 600 && mousePos.x <= 1000 && mousePos.y >= 440 && mousePos.y <= 520) {
                         *currentScreen = SCREEN_MODE_SELECT;
                     }
-                    else if (mousePos.x >= 300 && mousePos.x <= 500 && mousePos.y >= 280 && mousePos.y <= 320) {
+                    // Botón Instrucciones (600, 560, 400, 80)
+                    else if (mousePos.x >= 600 && mousePos.x <= 1000 && mousePos.y >= 560 && mousePos.y <= 640) {
                         *currentScreen = SCREEN_INSTRUCTIONS;
                     }
                     break;
 
                 case SCREEN_MODE_SELECT:
-                    if (mousePos.x >= 300 && mousePos.x <= 500 && mousePos.y >= 180 && mousePos.y <= 220) {
-                        *esDosJugadores = false;                    // Modo 1 Jugador
-                        *currentScreen = SCREEN_DIFFICULTY_SELECT;  // Va a dificultad
+                    // Modo 1 Jugador (600, 360, 400, 80)
+                    if (mousePos.x >= 600 && mousePos.x <= 1000 && mousePos.y >= 360 && mousePos.y <= 440) {
+                        *esDosJugadores = false;                    
+                        *currentScreen = SCREEN_DIFFICULTY_SELECT;  
                     }
-                    else if (mousePos.x >= 300 && mousePos.x <= 500 && mousePos.y >= 240 && mousePos.y <= 280) {
-                        *esDosJugadores = true;                     // Modo 2 Jugadores
-                        *currentScreen = SCREEN_CHARACTER_SELECT;   // Salta directo a personajes
+                    // Modo 2 Jugadores (600, 480, 400, 80)
+                    else if (mousePos.x >= 600 && mousePos.x <= 1000 && mousePos.y >= 480 && mousePos.y <= 560) {
+                        *esDosJugadores = true;                     
+                        *currentScreen = SCREEN_CHARACTER_SELECT;   
                     }
-                    else if (mousePos.x >= 50 && mousePos.x <= 130 && mousePos.y >= 400 && mousePos.y <= 430) {
+                    // Botón Volver (100, 800, 160, 60)
+                    else if (mousePos.x >= 100 && mousePos.x <= 260 && mousePos.y >= 800 && mousePos.y <= 860) {
                         *currentScreen = SCREEN_MAIN_MENU;
                     }
                     break;
 
                 case SCREEN_DIFFICULTY_SELECT:
-                    if (mousePos.x >= 300 && mousePos.x <= 500 && mousePos.y >= 160 && mousePos.y <= 200) { 
+                    // Fácil (600, 320, 400, 80)
+                    if (mousePos.x >= 600 && mousePos.x <= 1000 && mousePos.y >= 320 && mousePos.y <= 400) { 
                         *selectedDifficulty = 0; 
                         *currentScreen = SCREEN_CHARACTER_SELECT; 
                     }
-                    else if (mousePos.x >= 300 && mousePos.x <= 500 && mousePos.y >= 220 && mousePos.y <= 260) { 
+                    // Medio (600, 440, 400, 80)
+                    else if (mousePos.x >= 600 && mousePos.x <= 1000 && mousePos.y >= 440 && mousePos.y <= 520) { 
                         *selectedDifficulty = 1; 
                         *currentScreen = SCREEN_CHARACTER_SELECT; 
                     }
-                    else if (mousePos.x >= 300 && mousePos.x <= 500 && mousePos.y >= 280 && mousePos.y <= 320) { 
+                    // Difícil (600, 560, 400, 80)
+                    else if (mousePos.x >= 600 && mousePos.x <= 1000 && mousePos.y >= 560 && mousePos.y <= 640) { 
                         *selectedDifficulty = 2; 
                         *currentScreen = SCREEN_CHARACTER_SELECT; 
                     }
-                    else if (mousePos.x >= 50 && mousePos.x <= 130 && mousePos.y >= 400 && mousePos.y <= 430) { 
+                    // Volver (100, 800, 160, 60)
+                    else if (mousePos.x >= 100 && mousePos.x <= 260 && mousePos.y >= 800 && mousePos.y <= 860) { 
                         *currentScreen = SCREEN_MODE_SELECT; 
                     }
                     break;
 
                 case SCREEN_CHARACTER_SELECT: {
-                    // Botón Volver (Izquierda)
-                    Rectangle btnVolver = {50, 400, 80, 30};
-                    // Botón Comenzar / Jugar (Derecha)
-                    Rectangle btnComenzar = {670, 400, 80, 30};
+                    Rectangle btnVolver = {100, 800, 160, 60};
+                    Rectangle btnComenzar = {1340, 800, 160, 60};
 
                     if (mousePos.x >= btnVolver.x && mousePos.x <= btnVolver.x + btnVolver.width &&
                         mousePos.y >= btnVolver.y && mousePos.y <= btnVolver.y + btnVolver.height) {
                         
-                        // --- SOLUCIÓN DE LÓGICA DE RETROCESO ---
                         if (*esDosJugadores) {
-                            *currentScreen = SCREEN_MODE_SELECT;       // Si es 2P, vuelve directo al selector de modos
+                            *currentScreen = SCREEN_MODE_SELECT;       
                         } else {
-                            *currentScreen = SCREEN_DIFFICULTY_SELECT; // Si es 1P, vuelve a la dificultad
+                            *currentScreen = SCREEN_DIFFICULTY_SELECT; 
                         }
                     }
                     else if (mousePos.x >= btnComenzar.x && mousePos.x <= btnComenzar.x + btnComenzar.width &&
                              mousePos.y >= btnComenzar.y && mousePos.y <= btnComenzar.y + btnComenzar.height) {
-                        *currentScreen = SCREEN_LOADING; // ¡Dispara la pantalla de carga!
+                        *currentScreen = SCREEN_LOADING; 
                     }
                     break;
                 }
 
                 case SCREEN_INSTRUCTIONS:
-                    if (mousePos.x >= 50 && mousePos.x <= 130 && mousePos.y >= 400 && mousePos.y <= 430) {
+                    if (mousePos.x >= 100 && mousePos.x <= 260 && mousePos.y >= 800 && mousePos.y <= 860) {
                         *currentScreen = SCREEN_MAIN_MENU;
                     }
                     break;
@@ -92,8 +98,8 @@ void ActualizarMenu(GameScreen *currentScreen, int *selectedDifficulty, bool *es
 }
 
 void DibujarMenu(GameScreen currentScreen, int selectedDifficulty) {
-    const int screenWidth = 800;
-    const int screenHeight = 450;
+    const int screenWidth = 1600;
+    const int screenHeight = 900;
 
     BeginDrawing();
     ClearBackground((Color){15, 15, 18, 255});
@@ -108,121 +114,127 @@ void DibujarMenu(GameScreen currentScreen, int selectedDifficulty) {
 
     switch (currentScreen) {
         case SCREEN_MAIN_MENU: {
-            int fontSize = 46; 
-            int posY = 110;    
+            int fontSize = 92; 
+            int posY = 220;    
 
-            DrawText("ARENA FIGHTER 2D", screenWidth / 2 - MeasureText("ARENA FIGHTER 2D", fontSize) / 2 + 2, posY + 2, fontSize, BLACK);
+            DrawText("ARENA FIGHTER 2D", screenWidth / 2 - MeasureText("ARENA FIGHTER 2D", fontSize) / 2 + 4, posY + 4, fontSize, BLACK);
             DrawText("ARENA FIGHTER 2D", screenWidth / 2 - MeasureText("ARENA FIGHTER 2D", fontSize) / 2, posY, fontSize, amarilloEspada);
 
-            Rectangle btnJugar = {300, 220, 200, 40};
-            bool hoverJugar = (mousePos.x >= btnJugar.x && mousePos.x <= btnJugar.x + btnJugar.width &&
-                               mousePos.y >= btnJugar.y && mousePos.y <= btnJugar.y + btnJugar.height);
+            Rectangle btnJugar = {600, 440, 400, 80};
+            bool hoverJugar = CheckCollisionPointRec(mousePos, btnJugar);
             DrawRectangleRec(btnJugar, hoverJugar ? grisHover : grisOscuro);
             DrawRectangleLines((int)btnJugar.x, (int)btnJugar.y, (int)btnJugar.width, (int)btnJugar.height, hoverJugar ? amarilloEspada : grisMetal);
-            DrawText("Jugar", screenWidth / 2 - MeasureText("Jugar", 16) / 2, 232, 16, textoClaro);
+            DrawText("Jugar", screenWidth / 2 - MeasureText("Jugar", 32) / 2, 464, 32, textoClaro);
 
-            Rectangle btnInstrucciones = {300, 280, 200, 40};
+            Rectangle btnInstrucciones = {600, 560, 400, 80};
             bool hoverInstrucciones = CheckCollisionPointRec(mousePos, btnInstrucciones);
             DrawRectangleRec(btnInstrucciones, hoverInstrucciones ? grisHover : grisOscuro);
             DrawRectangleLines((int)btnInstrucciones.x, (int)btnInstrucciones.y, (int)btnInstrucciones.width, (int)btnInstrucciones.height, hoverInstrucciones ? amarilloEspada : grisMetal);
-            DrawText("Instrucciones", screenWidth / 2 - MeasureText("Instrucciones", 16) / 2, 292, 16, textoClaro);
+            DrawText("Instrucciones", screenWidth / 2 - MeasureText("Instrucciones", 32) / 2, 584, 32, textoClaro);
             break;
         }
 
         case SCREEN_MODE_SELECT: {
-            DrawText("SELECCIONA MODO", screenWidth / 2 - MeasureText("SELECCIONA MODO", 22) / 2, 80, 22, amarilloEspada);
+            DrawText("SELECCIONA MODO", screenWidth / 2 - MeasureText("SELECCIONA MODO", 44) / 2, 160, 44, amarilloEspada);
 
-            Rectangle btnModo1 = {300, 180, 200, 40};
+            Rectangle btnModo1 = {600, 360, 400, 80};
             bool hoverModo1 = CheckCollisionPointRec(mousePos, btnModo1);
             DrawRectangleRec(btnModo1, hoverModo1 ? grisHover : grisOscuro);
             DrawRectangleLines((int)btnModo1.x, (int)btnModo1.y, (int)btnModo1.width, (int)btnModo1.height, hoverModo1 ? amarilloEspada : grisMetal);
-            DrawText("1 Jugador (vs Bot)", screenWidth / 2 - MeasureText("1 Jugador (vs Bot)", 14) / 2, 193, 14, textoClaro);
+            DrawText("1 Jugador (vs Bot)", screenWidth / 2 - MeasureText("1 Jugador (vs Bot)", 28) / 2, 386, 28, textoClaro);
 
-            Rectangle btnModo2 = {300, 240, 200, 40};
+            Rectangle btnModo2 = {600, 480, 400, 80};
             bool hoverModo2 = CheckCollisionPointRec(mousePos, btnModo2);
             DrawRectangleRec(btnModo2, hoverModo2 ? grisHover : grisOscuro);
             DrawRectangleLines((int)btnModo2.x, (int)btnModo2.y, (int)btnModo2.width, (int)btnModo2.height, hoverModo2 ? amarilloEspada : grisMetal);
-            DrawText("2 Jugadores (Local)", screenWidth / 2 - MeasureText("2 Jugadores (Local)", 14) / 2, 253, 14, textoClaro);
+            DrawText("2 Jugadores (Local)", screenWidth / 2 - MeasureText("2 Jugadores (Local)", 28) / 2, 506, 28, textoClaro);
 
-            Rectangle btnVolver = {50, 400, 80, 30};
+            Rectangle btnVolver = {100, 800, 160, 60};
             bool hoverVolver = CheckCollisionPointRec(mousePos, btnVolver);
             DrawRectangleRec(btnVolver, hoverVolver ? grisHover : grisOscuro);
             DrawRectangleLines((int)btnVolver.x, (int)btnVolver.y, (int)btnVolver.width, (int)btnVolver.height, hoverVolver ? amarilloEspada : grisMetal);
-            DrawText("Volver", 72, 408, 12, textoClaro);
+            DrawText("Volver", 136, 818, 22, textoClaro);
             break;
         }
 
         case SCREEN_DIFFICULTY_SELECT: {
-            DrawText("ELIGE LA DIFICULTAD", screenWidth / 2 - MeasureText("ELIGE LA DIFICULTAD", 20) / 2, 80, 20, amarilloEspada);
+            DrawText("ELIGE LA DIFICULTAD", screenWidth / 2 - MeasureText("ELIGE LA DIFICULTAD", 40) / 2, 160, 40, amarilloEspada);
 
-            Rectangle btnFacil = {300, 160, 200, 40};
+            Rectangle btnFacil = {600, 320, 400, 80};
             bool hoverFacil = CheckCollisionPointRec(mousePos, btnFacil);
             DrawRectangleRec(btnFacil, hoverFacil ? grisHover : grisOscuro);
             DrawRectangleLines((int)btnFacil.x, (int)btnFacil.y, (int)btnFacil.width, (int)btnFacil.height, hoverFacil ? amarilloEspada : grisMetal);
-            DrawText("Facil", screenWidth / 2 - MeasureText("Facil", 14) / 2, 173, 14, textoClaro);
+            DrawText("Facil", screenWidth / 2 - MeasureText("Facil", 28) / 2, 346, 28, textoClaro);
 
-            Rectangle btnMedio = {300, 220, 200, 40};
+            Rectangle btnMedio = {600, 440, 400, 80};
             bool hoverMedio = CheckCollisionPointRec(mousePos, btnMedio);
             DrawRectangleRec(btnMedio, hoverMedio ? grisHover : grisOscuro);
             DrawRectangleLines((int)btnMedio.x, (int)btnMedio.y, (int)btnMedio.width, (int)btnMedio.height, hoverMedio ? amarilloEspada : grisMetal);
-            DrawText("Medio", screenWidth / 2 - MeasureText("Medio", 14) / 2, 233, 14, textoClaro);
+            DrawText("Medio", screenWidth / 2 - MeasureText("Medio", 28) / 2, 466, 28, textoClaro);
 
-            Rectangle btnDificil = {300, 280, 200, 40};
+            Rectangle btnDificil = {600, 560, 400, 80};
             bool hoverDificil = CheckCollisionPointRec(mousePos, btnDificil);
             DrawRectangleRec(btnDificil, hoverDificil ? grisHover : grisOscuro);
             DrawRectangleLines((int)btnDificil.x, (int)btnDificil.y, (int)btnDificil.width, (int)btnDificil.height, hoverDificil ? amarilloEspada : grisMetal);
-            DrawText("Dificil", screenWidth / 2 - MeasureText("Dificil", 14) / 2, 293, 14, textoClaro);
+            DrawText("Dificil", screenWidth / 2 - MeasureText("Dificil", 28) / 2, 586, 28, textoClaro);
 
-            Rectangle btnVolver = {50, 400, 80, 30};
+            Rectangle btnVolver = {100, 800, 160, 60};
             bool hoverVolver = CheckCollisionPointRec(mousePos, btnVolver);
             DrawRectangleRec(btnVolver, hoverVolver ? grisHover : grisOscuro);
             DrawRectangleLines((int)btnVolver.x, (int)btnVolver.y, (int)btnVolver.width, (int)btnVolver.height, hoverVolver ? amarilloEspada : grisMetal);
-            DrawText("Volver", 72, 408, 12, textoClaro);
+            DrawText("Volver", 136, 818, 22, textoClaro);
             break;
         }
 
         case SCREEN_CHARACTER_SELECT: {
-            DrawText("ELIGE TU JUGADOR", screenWidth/2 - MeasureText("ELIGE TU JUGADOR", 28)/2, 35, 28, amarilloEspada);
+            DrawText("ELIGE TU JUGADOR", screenWidth/2 - MeasureText("ELIGE TU JUGADOR", 56)/2, 70, 56, amarilloEspada);
             
-            DrawText("NOMBRE", 260 - MeasureText("NOMBRE", 16)/2, 95, 16, grisMetal);
-            DrawRectangleLines(180, 120, 160, 130, grisMetal); 
-            DrawText("<", 150, 170, 24, amarilloEspada);
-            DrawText(">", 345, 170, 24, amarilloEspada);
+            // JUGADOR 1
+            DrawText("NOMBRE", 520 - MeasureText("NOMBRE", 32)/2, 190, 32, grisMetal);
+            DrawRectangleLines(360, 240, 320, 260, grisMetal); 
+            DrawText("<", 300, 340, 48, amarilloEspada);
+            DrawText(">", 700, 340, 48, amarilloEspada);
 
-            DrawText("OPONENTE", 540 - MeasureText("OPONENTE", 16)/2, 95, 16, grisMetal);
-            DrawRectangleLines(460, 120, 160, 130, grisMetal); 
-            DrawText("<", 430, 170, 24, amarilloEspada); 
-            DrawText(">", 625, 170, 24, amarilloEspada); 
+            // OPONENTE
+            DrawText("OPONENTE", 1080 - MeasureText("OPONENTE", 32)/2, 190, 32, grisMetal);
+            DrawRectangleLines(920, 240, 320, 260, grisMetal); 
+            DrawText("<", 860, 340, 48, amarilloEspada); 
+            DrawText(">", 1260, 340, 48, amarilloEspada); 
 
-            Rectangle btnVolver = {50, 400, 80, 30};
+            Rectangle btnVolver = {100, 800, 160, 60};
             bool hoverVolver = CheckCollisionPointRec(mousePos, btnVolver);
             DrawRectangleRec(btnVolver, hoverVolver ? grisHover : grisOscuro);
             DrawRectangleLines((int)btnVolver.x, (int)btnVolver.y, (int)btnVolver.width, (int)btnVolver.height, hoverVolver ? amarilloEspada : grisMetal);
-            DrawText("Volver", 72, 408, 12, textoClaro);
+            DrawText("Volver", 136, 818, 22, textoClaro);
 
-            Rectangle btnComenzar = {670, 400, 80, 30};
+            Rectangle btnComenzar = {1340, 800, 160, 60};
             bool hoverComenzar = CheckCollisionPointRec(mousePos, btnComenzar);
             DrawRectangleRec(btnComenzar, hoverComenzar ? grisHover : grisOscuro);
             DrawRectangleLines((int)btnComenzar.x, (int)btnComenzar.y, (int)btnComenzar.width, (int)btnComenzar.height, hoverComenzar ? amarilloEspada : grisMetal);
-            DrawText("Jugar", 694, 408, 12, amarilloEspada);
+            DrawText("Jugar", 1388, 818, 22, amarilloEspada);
             break;
         }
 
         case SCREEN_INSTRUCTIONS: {
-            DrawText("INSTRUCCIONES", screenWidth / 2 - MeasureText("INSTRUCCIONES", 20) / 2, 35, 20, amarilloEspada);
+            DrawText("INSTRUCCIONES", screenWidth / 2 - MeasureText("INSTRUCCIONES", 40) / 2, 70, 40, amarilloEspada);
             
-            DrawText("- Movimiento: Usa las flechas o teclas A/D para desplazarte.", 80, 95, 13, textoClaro);
-            DrawText("- Ataque básico: Presiona Espacio / Click para golpear con la espada.", 80, 130, 13, textoClaro);
-            DrawText("- Sistema de Combate: Gestiona tus hitboxes y tiempos de recuperación.", 80, 165, 13, textoClaro);
-            DrawText("- Armas: Las armas aparecen de forma aleatoria en el escenario.", 80, 200, 13, textoClaro);
-            DrawText("- Duración: Las armas recolectadas tienen un tiempo de vida limitado.", 80, 235, 13, textoClaro);
-            DrawText("- Objetivo: Reduce la barra de vida de tu oponente a cero para ganar.", 80, 270, 13, textoClaro);
+            int startX = 160;
+            int startY = 190;
+            int spacing = 70;
+            int fontSizeText = 26;
 
-            Rectangle btnVolver = {50, 400, 80, 30};
+            DrawText("- Movimiento: Usa las flechas o teclas A/D para desplazarte.", startX, startY, fontSizeText, textoClaro);
+            DrawText("- Ataque básico: Presiona Espacio / Click para golpear con la espada.", startX, startY + spacing, fontSizeText, textoClaro);
+            DrawText("- Sistema de Combate: Gestiona tus hitboxes y tiempos de recuperación.", startX, startY + spacing * 2, fontSizeText, textoClaro);
+            DrawText("- Armas: Las armas aparecen de forma aleatoria en el escenario.", startX, startY + spacing * 3, fontSizeText, textoClaro);
+            DrawText("- Duración: Las armas recolectadas tienen un tiempo de vida limitado.", startX, startY + spacing * 4, fontSizeText, textoClaro);
+            DrawText("- Objetivo: Reduce la barra de vida de tu oponente a cero para ganar.", startX, startY + spacing * 5, fontSizeText, textoClaro);
+
+            Rectangle btnVolver = {100, 800, 160, 60};
             bool hoverVolver = CheckCollisionPointRec(mousePos, btnVolver);
             DrawRectangleRec(btnVolver, hoverVolver ? grisHover : grisOscuro);
             DrawRectangleLines((int)btnVolver.x, (int)btnVolver.y, (int)btnVolver.width, (int)btnVolver.height, hoverVolver ? amarilloEspada : grisMetal);
-            DrawText("Volver", 72, 408, 12, textoClaro);
+            DrawText("Volver", 136, 818, 22, textoClaro);
             break;
         }
 

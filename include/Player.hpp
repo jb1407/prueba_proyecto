@@ -27,12 +27,14 @@ private:
     float invincibilityTimer;
     bool isInvincible;
 
+    void ClampToScreen(int screenWidth, int screenHeight);
+
 public:
     // Constructor
     Player(float startX, float startY);
 
     // Métodos principales
-    void Update(AssetManager& assetManager);
+    void Update(AssetManager& assetManager, int screenWidth, int screenHeight);
     void TakeDamage(float amount);
     bool IsDead() const { return health <= 0.0f; }
 

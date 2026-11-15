@@ -73,7 +73,7 @@ int main() {
         else if (currentScreen == SCREEN_GAME_PLAYING) {
             // Lógica de combate activo
             if (gameState == PLAYING && player && enemy) {
-                player->Update(assetManager);
+                player->Update(assetManager, screenWidth, screenHeight);
                 enemy->Update(player->getPosition(), IsKeyDown(KEY_SPACE), screenWidth, screenHeight);
 
                 // Detección de colisiones (Hitboxes vs Hurtboxes)

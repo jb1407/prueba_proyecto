@@ -20,7 +20,22 @@ Player::Player(float startX, float startY) : hurtbox(startX, startY, 115.0f, 200
     isInvincible = false;
 }
 
-void Player::Update(AssetManager& assetManager) {
+void Player::ClampToScreen(int screenWidth, int screenHeight) {
+    if (position.x < 0) position.x = 0;
+    if (position.y < 0) position.y = 0;
+    // --- LÍNEA MODIFICADA PARA EL LADO DERECHO ---
+    float margenDerecho = 50.0f; // Puedes subir este número (ej. 70 o 90) si todavía se sale un poco, o bajarlo si frena muy temprano
+    if (position.x + size.x + margenDerecho > screenWidth) {
+        position.x = screenWidth - size.x - margenDerecho;
+    }
+    
+    float alturaSuelo = 120.0f; // Ajusta este valor probando si sube o baja el piso visualmente
+    if (position.y + size.y > screenHeight - alturaSuelo) {
+        position.y = screenHeight - alturaSuelo - size.y;
+    }
+}
+
+void Player::Update(AssetManager& assetManager, int screenWidth, int screenHeight) {
     if (isInvincible) {
         invincibilityTimer -= GetFrameTime();
         if (invincibilityTimer <= 0.0f) {
@@ -121,6 +136,8 @@ void Player::Update(AssetManager& assetManager) {
     if (shouldDraw) {
         combatManager.RequestMove(currentMove, assetManager, position, flipX);
     }
+
+    ClampToScreen(screenWidth, screenHeight);
 
     hurtbox.UpdatePosition(position.x, position.y, 0.0f, 0.0f);
 

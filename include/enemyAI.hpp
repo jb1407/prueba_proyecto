@@ -68,6 +68,7 @@ private:
 
     float reactionTimer = 0.0f;
     float reactionDelay = 0.2f;
+    float actionDurationTimer = 0.0f; // Nuevo: bloquea el cambio de decisión durante un amague o retroceso
 
     // --- NUEVO: Cajas de colisión del Enemigo ---
     Hitbox hurtbox;       // El cuerpo del enemigo (para recibir daño)
@@ -99,7 +100,7 @@ public:
     float GetMaxHealth() const { return maxHealth; }
 
     // --- NUEVOS GETTERS PARA LAS HITBOXES ---
-    Rectangle GetHurtbox() const { return hurtbox.GetRect(); }
+    Hitbox& GetHurtbox() { return hurtbox; }
     const Hitbox& GetAttackHitbox() const { return attackHitbox; }
 
     void TakeDamage(float amount);

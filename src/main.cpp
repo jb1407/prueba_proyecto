@@ -76,11 +76,9 @@ int main() {
                 player->Update(assetManager, screenWidth, screenHeight);
                 enemy->Update(player->getPosition(), IsKeyDown(KEY_SPACE), screenWidth, screenHeight);
 
-                // Detección de colisiones (Hitboxes vs Hurtboxes)
-                if (player->GetAttackHitbox().CheckCollision(enemy->GetHurtbox())) {
+                if (player->GetAttackHitbox().CheckCollision(enemy->GetHurtbox().GetRect())) {
                     enemy->TakeDamage(0.5f); 
                 }
-
                 if (enemy->GetAttackHitbox().CheckCollision(player->GetHurtbox())) {
                     player->TakeDamage(2.0f); 
                 }
@@ -139,7 +137,7 @@ int main() {
                 enemy->Draw(assetManager, player->getPosition());
 
                 DrawRectangleRec(player->GetHurtbox(), Fade(BLUE, 0.4f));
-                DrawRectangleRec(enemy->GetHurtbox(), Fade(BLUE, 0.4f));
+                DrawRectangleRec(enemy->GetHurtbox().GetRect(), Fade(BLUE, 0.4f));
 
                 player->GetAttackHitbox().Draw(RED);
                 enemy->GetAttackHitbox().Draw(RED);

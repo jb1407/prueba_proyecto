@@ -3,9 +3,9 @@
 
 #include <raylib.h>
 #include <functional>
-#include "mtreenode.hpp" // Ajusta la ruta según donde tengas tu librería
+#include "mtreenode.hpp"
 #include "Mechanics.hpp"
-#include "hitbox.hpp"    // <-- NUEVO: Incluimos el módulo de hitboxes
+#include "hitbox.hpp"
 
 using namespace Designar;
 
@@ -18,11 +18,11 @@ enum class Difficulty {
 enum class AIAction {
     IDLE,
     APPROACH,
+    DASH_FORWARD, // Impulso rápido hacia el jugador para cerrar distancia
     RETREAT,
     ATTACK_LIGHT,
     ATTACK_HEAVY,
-    BLOCK,
-    PATROL
+    BLOCK
 };
 
 enum class NodeType {
@@ -48,31 +48,23 @@ private:
     Vector2 size;
     Vector2 moveDir;
     
-    int health;
-    int maxHealth;
+    float health;
+    float maxHealth;
     float damageMultiplier;
     AIAction currentAction;
     
     float attackRange;
-    float retreatDistance;
     float alertRange;
-    
-    Vector2 patrolCenter;
-    int patrolCornerIndex;
-    float rectWidth;
-    float rectHeight;
-    Vector2 patrolDirection;
-
     int playerAttackCounter;
     Difficulty currentDifficulty;
 
     float reactionTimer = 0.0f;
     float reactionDelay = 0.2f;
-    float actionDurationTimer = 0.0f; // Nuevo: bloquea el cambio de decisión durante un amague o retroceso
+    float actionDurationTimer = 0.0f; // Bloquea el cambio de decisión durante amagues o dashes
 
-    // --- NUEVO: Cajas de colisión del Enemigo ---
-    Hitbox hurtbox;       // El cuerpo del enemigo (para recibir daño)
-    Hitbox attackHitbox;  // El área de impacto cuando ataca
+    // Cajas de colisión del Enemigo
+    Hitbox hurtbox;
+    Hitbox attackHitbox;
 
     MTreeNode<DecisionKey>* decisionTreeRoot;
 
@@ -99,7 +91,6 @@ public:
     float GetHealth() const { return health; }
     float GetMaxHealth() const { return maxHealth; }
 
-    // --- NUEVOS GETTERS PARA LAS HITBOXES ---
     Hitbox& GetHurtbox() { return hurtbox; }
     const Hitbox& GetAttackHitbox() const { return attackHitbox; }
 

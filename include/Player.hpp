@@ -19,6 +19,7 @@ private:
 
     Vector2 dodgeDir;
     float dodgeSpeed;
+    float dodgeTimer;
 
     // --- NUEVO: Cajas de colisión del Jugador ---
     Hitbox hurtbox;       // El cuerpo del jugador (para recibir daño)
@@ -50,8 +51,8 @@ public:
     float GetHealth() const { return health; }
     float GetMaxHealth() const { return maxHealth; }
 
-    // --- NUEVOS GETTERS PARA LAS HITBOXES ---
-    Rectangle GetHurtbox() const { return hurtbox.GetRect(); }
+    // En Player.hpp, reemplaza la línea de GetHurtbox por:
+    Hitbox& GetHurtbox() { return hurtbox; }
     const Hitbox& GetAttackHitbox() const { return attackHitbox; }
 };
 

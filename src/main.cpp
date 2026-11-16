@@ -79,7 +79,7 @@ int main() {
                 if (player->GetAttackHitbox().CheckCollision(enemy->GetHurtbox().GetRect())) {
                     enemy->TakeDamage(0.5f); 
                 }
-                if (enemy->GetAttackHitbox().CheckCollision(player->GetHurtbox())) {
+                if (enemy->GetAttackHitbox().CheckCollision(player->GetHurtbox().GetRect())) {
                     player->TakeDamage(2.0f); 
                 }
 
@@ -136,11 +136,12 @@ int main() {
                 // Dibujar al enemigo, hitboxes, hurtboxes y HUD de vida
                 enemy->Draw(assetManager, player->getPosition());
 
-                DrawRectangleRec(player->GetHurtbox(), Fade(BLUE, 0.4f));
+                /*DrawRectangleRec(player->GetHurtbox().GetRect(), Fade(BLUE, 0.4f));
                 DrawRectangleRec(enemy->GetHurtbox().GetRect(), Fade(BLUE, 0.4f));
 
                 player->GetAttackHitbox().Draw(RED);
                 enemy->GetAttackHitbox().Draw(RED);
+                */                
 
                 HUD::Draw(
                     screenWidth, screenHeight, 

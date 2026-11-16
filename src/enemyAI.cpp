@@ -11,13 +11,12 @@ EnemyAI::EnemyAI(float startX, float startY, Difficulty diff) : hurtbox(startX, 
     position = { startX, startY };
     initialPosition = { startX, startY };
 
-
     switch (diff) {
         case Difficulty::EASY:
             speed = { 3.0f, 3.0f };
             reactionDelay = 0.35f;
-            attackRange = 50.0f;     // Rango de ataque cuerpo a cuerpo para fácil
-            alertRange = 300.0f;     // Rango de visión de la IA
+            attackRange = 50.0f;
+            alertRange = 300.0f;
             damageMultiplier = 1.25f;
             break;
 
@@ -27,25 +26,18 @@ EnemyAI::EnemyAI(float startX, float startY, Difficulty diff) : hurtbox(startX, 
             attackRange = 60.0f;
             alertRange = 450.0f;
             damageMultiplier = 1.00f;
-
             break;
 
         case Difficulty::HARD:
             speed = { 5.0f, 5.0f };
             reactionDelay = 0.15f;
             attackRange = 70.0f;
-            alertRange = 600.0f;     // Un bot más peligroso te detecta desde más lejos
+            alertRange = 600.0f;
             damageMultiplier = 0.75f;
             break;
     }
 
     currentAction = AIAction::IDLE;
-    
-    patrolCenter = initialPosition;
-    patrolCornerIndex = 0;
-    rectWidth = 150.0f;   
-    rectHeight = 90.0f;  
-    patrolDirection = { 1.0f, 0.5f };
     playerAttackCounter = 0;
 
     // Construir el árbol correspondiente
@@ -62,7 +54,6 @@ MTreeNode<DecisionKey>* EnemyAI::BuildDecisionTree(Difficulty diff) {
 }
 
 EnemyAI::~EnemyAI() {
-    // Si la librería DeSiGNAR provee destroy_tree, puedes usarla:
     MTreeNode<DecisionKey>::destroy_tree(decisionTreeRoot);
 }
 
@@ -78,38 +69,47 @@ MTreeNode<DecisionKey>* EnemyAI::BuildEasyTree() {
     ));
     
     nodeCheckAttack->append_child(leafAttack);
-    leafAttack->add_right_sibling(leafApproach); // Si está lejos -> ¡Se acerca directamente!
+    leafAttack->add_right_sibling(leafApproach); // Si está lejos -> Se acerca caminando
 
-    return nodeCheckAttack; // Ahora la raíz es directamente la condición de ataque/aproximación
+    return nodeCheckAttack;
 }
 
 MTreeNode<DecisionKey>* EnemyAI::BuildMediumTree() {
-    auto leafBlock    = new MTreeNode<DecisionKey>(DecisionKey(AIAction::BLOCK));
-    auto leafRetreat1 = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
-    auto leafRetreat2 = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
-    auto leafAttack   = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT));
-    auto leafApproach = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
+    auto leafBlock       = new MTreeNode<DecisionKey>(DecisionKey(AIAction::BLOCK));
+    auto leafRetreat1    = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
+    auto leafRetreat2    = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
+    auto leafAttack      = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT));
+    auto leafDashForward = new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD));
+    auto leafApproach    = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
 
-    // 1. Probabilidad a corta distancia: 60% Ataca, 40% Retrocede (amague táctico / backward)
-    auto nodeProbability = new MTreeNode<DecisionKey>(DecisionKey(
+    // 1. Probabilidad a corta distancia: 60% Ataca, 40% Retrocede (amague táctico)
+    auto nodeCloseProb = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
-            int randomChoice = rand() % 10;
-            return (randomChoice < 6); 
+            return (rand() % 100) < 60;
         }
     ));
-    nodeProbability->append_child(leafAttack);
-    leafAttack->add_right_sibling(leafRetreat1); 
+    nodeCloseProb->append_child(leafAttack);
+    leafAttack->add_right_sibling(leafRetreat1);
 
-    // 2. Nodo de Distancia: ¿Está a rango cuerpo a cuerpo?
+    // 2. Probabilidad a larga distancia: 30% Dash explosivo hacia adelante, 70% Camina (APPROACH)
+    auto nodeFarProb = new MTreeNode<DecisionKey>(DecisionKey(
+        [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
+            return (rand() % 100) < 30;
+        }
+    ));
+    nodeFarProb->append_child(leafDashForward);
+    leafDashForward->add_right_sibling(leafApproach);
+
+    // 3. Nodo de Distancia: ¿Está a rango cuerpo a cuerpo?
     auto nodeCheckDistance = new MTreeNode<DecisionKey>(DecisionKey(
         [this](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
             return Vector2Distance(pos, pPos) <= this->attackRange;
         }
     ));
-    nodeCheckDistance->append_child(nodeProbability);     
-    nodeProbability->add_right_sibling(leafApproach);     // Si está lejos -> ¡Lo persigue sin dudar!
+    nodeCheckDistance->append_child(nodeCloseProb);     
+    nodeCloseProb->add_right_sibling(nodeFarProb); // Si está lejos -> Evalúa Dash o Approach
 
-    // 3. Retroceso por presión del jugador
+    // 4. Retroceso por presión del jugador
     auto nodeCheckRetreat = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
             return atkCount >= 3;
@@ -118,7 +118,7 @@ MTreeNode<DecisionKey>* EnemyAI::BuildMediumTree() {
     nodeCheckRetreat->append_child(leafRetreat2);
     leafRetreat2->add_right_sibling(nodeCheckDistance);   
 
-    // 4. Bloqueo defensivo
+    // 5. Bloqueo defensivo
     auto nodeCheckBlock = new MTreeNode<DecisionKey>(DecisionKey(
         [this](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
             return attacking && Vector2Distance(pos, pPos) <= (this->attackRange * 1.3f);
@@ -127,56 +127,64 @@ MTreeNode<DecisionKey>* EnemyAI::BuildMediumTree() {
     nodeCheckBlock->append_child(leafBlock);
     leafBlock->add_right_sibling(nodeCheckRetreat);
 
-    return nodeCheckBlock; // Raíz directa de combate y persecución
+    return nodeCheckBlock;
 }
 
 MTreeNode<DecisionKey>* EnemyAI::BuildHardTree() {
-    auto leafBlock       = new MTreeNode<DecisionKey>(DecisionKey(AIAction::BLOCK));
-    auto leafRetreat     = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
-    auto leafAttackLight = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT));
-    auto leafAttackHeavy = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_HEAVY)); 
-    auto leafApproach    = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
+    auto leafBlock         = new MTreeNode<DecisionKey>(DecisionKey(AIAction::BLOCK));
+    auto leafRetreat       = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
+    auto leafRetreatGlobal = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
+    auto leafAttackLight   = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT));
+    auto leafAttackHeavy   = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_HEAVY)); 
+    auto leafDashForward   = new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD));
+    auto leafApproach      = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
 
-    // 1. Elección de ataque (Ligero si está en rango normal, Pesado si está un poco más al límite)
+    // 1. Elección de ataque (Ligero en rango corto, Pesado al límite)
     auto nodeAttackChoice = new MTreeNode<DecisionKey>(DecisionKey(
         [this](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
             return Vector2Distance(pos, pPos) <= this->attackRange;
         }
     ));
     nodeAttackChoice->append_child(leafAttackLight);
-    leafAttackLight->add_right_sibling(leafAttackHeavy); // Hermano FALSE de la condición de ataque
+    leafAttackLight->add_right_sibling(leafAttackHeavy);
 
-    // 2. Nodo de Probabilidad Táctica a distancia cercana (<= 150px):
-    // 35% Retrocede (Backward / Amague), 65% Pasa a evaluar los ataques
+    // 2. Probabilidad Táctica a corta distancia (<= 150px): 50% Amague (RETREAT), 50% Ataca
     auto nodeTacticalMix = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
-            int roll = rand() % 100;
-            return (roll < 50); // 35% true -> Retrocede
+            return (rand() % 100) < 50;
         }
     ));
     nodeTacticalMix->append_child(leafRetreat);
-    leafRetreat->add_right_sibling(nodeAttackChoice); // Hermano FALSE -> Va a la elección de ataque
+    leafRetreat->add_right_sibling(nodeAttackChoice);
 
-    // 3. Nodo de Rango Táctico Cercano (<= 150px)
+    // 3. Probabilidad de Persecución Agresiva (> 150px): 60% Dash hacia adelante, 40% Camina
+    auto nodeFarAggression = new MTreeNode<DecisionKey>(DecisionKey(
+        [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
+            return (rand() % 100) < 60;
+        }
+    ));
+    nodeFarAggression->append_child(leafDashForward);
+    leafDashForward->add_right_sibling(leafApproach);
+
+    // 4. Nodo de Rango Táctico Cercano (<= 150px)
     auto nodeCloseRange = new MTreeNode<DecisionKey>(DecisionKey(
         [this](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
             return Vector2Distance(pos, pPos) <= 150.0f;
         }
     ));
     nodeCloseRange->append_child(nodeTacticalMix);
-    nodeTacticalMix->add_right_sibling(leafApproach); // Hermano FALSE (> 150px) -> APPROACH directo
+    nodeTacticalMix->add_right_sibling(nodeFarAggression); // Si está lejos -> Evalúa Dash agresivo
 
-    // 4. Nodo de Presión por ataques del jugador (atkCount >= 2)
+    // 5. Nodo de Presión por ataques del jugador (atkCount >= 2)
     auto nodeCheckRetreat = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
             return atkCount >= 2; 
         }
     ));
-    auto leafRetreatGlobal = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
     nodeCheckRetreat->append_child(leafRetreatGlobal);
     leafRetreatGlobal->add_right_sibling(nodeCloseRange);
 
-    // 5. Nodo de Bloqueo Defensivo avanzado (Prioridad si el jugador ataca)
+    // 6. Nodo de Bloqueo Defensivo avanzado
     auto nodeCheckBlock = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2 pos, Vector2 pPos, bool attacking, int atkCount) {
             return attacking; 
@@ -188,7 +196,6 @@ MTreeNode<DecisionKey>* EnemyAI::BuildHardTree() {
     return nodeCheckBlock;
 }
 
-// --- EVALUACIÓN DEL ÁRBOL RECORRIendo MTreeNode ---
 void EnemyAI::EvaluateTree(Vector2 playerPosition, bool isPlayerAttacking) {
     if (isPlayerAttacking) {
         playerAttackCounter++;
@@ -198,17 +205,14 @@ void EnemyAI::EvaluateTree(Vector2 playerPosition, bool isPlayerAttacking) {
 
     MTreeNode<DecisionKey>* currentNode = decisionTreeRoot;
 
-    // Navegar por el árbol mientras el nodo tenga hijos (no sea una hoja)
     while (currentNode && !currentNode->is_leaf()) {
         auto& key = currentNode->get_key();
         
         if (key.type == NodeType::CONDITION) {
             bool evalResult = key.condition(position, playerPosition, isPlayerAttacking, playerAttackCounter);
             
-            // first_child es la rama TRUE (Sí)
             MTreeNode<DecisionKey>* trueBranch = currentNode->get_first_child();
             if (trueBranch) {
-                // El hermano derecho del first_child es la rama FALSE (No)
                 MTreeNode<DecisionKey>* falseBranch = trueBranch->get_right_sibling();
                 
                 if (evalResult) {
@@ -224,7 +228,6 @@ void EnemyAI::EvaluateTree(Vector2 playerPosition, bool isPlayerAttacking) {
         }
     }
 
-    // Al llegar a la hoja, extraemos la acción resultante
     if (currentNode && currentNode->is_leaf()) {
         currentAction = currentNode->get_key().action;
     }
@@ -240,31 +243,31 @@ void EnemyAI::ClampToScreen(int screenWidth, int screenHeight) {
 void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenWidth, int screenHeight) {
     float dt = GetFrameTime();
 
-    // 1. Acumulamos el tiempo del frame y descontamos el bloqueo de acción táctica si está activo
+    // 1. Acumulamos el tiempo del frame y descontamos el compromiso táctico si está activo
     reactionTimer += dt;
     if (actionDurationTimer > 0.0f) {
         actionDurationTimer -= dt;
     }
 
-    // 2. Solo reevaluamos el árbol de decisiones cuando se cumpla el delay Y haya terminado el compromiso de la acción actual
+    // 2. Reevaluamos el árbol cuando se cumpla el delay Y haya terminado la acción comprometida
     if (reactionTimer >= reactionDelay && actionDurationTimer <= 0.0f) {
         EvaluateTree(playerPosition, isPlayerAttacking);
-        reactionTimer = 0.0f; // Reiniciamos el temporizador de decisión
+        reactionTimer = 0.0f;
 
-        // Si el árbol decide hacer un retroceso/amague (RETREAT), lo sostenemos durante 0.45 segundos
-        // para que el desplazamiento tenga buen alcance y se note visualmente
         if (currentAction == AIAction::RETREAT) {
-            actionDurationTimer = 0.45f; 
+            actionDurationTimer = 0.45f; // Sostiene el amague hacia atrás
+        } else if (currentAction == AIAction::DASH_FORWARD) {
+            actionDurationTimer = 0.35f; // Sostiene el impulso explosivo hacia adelante
         }
     }
 
-    // 3. Ejecutar el movimiento o comportamiento físico correspondiente a la acción elegida
+    // 3. Ejecutar el movimiento o comportamiento físico correspondiente
     switch (currentAction) {
         case AIAction::APPROACH: {
             Vector2 dir = { playerPosition.x - position.x, playerPosition.y - position.y };
             float len = std::hypot(dir.x, dir.y);
             if (len > 0) {
-                moveDir = { dir.x / len, dir.y / len }; // Guardamos la dirección normalizada
+                moveDir = { dir.x / len, dir.y / len };
                 position.x += moveDir.x * speed.x;
                 position.y += moveDir.y * speed.y;
             } else {
@@ -273,13 +276,27 @@ void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenW
             break;
         }
 
+        case AIAction::DASH_FORWARD: {
+            // Deslizamiento rápido hacia el jugador para recortar distancia agresivamente
+            Vector2 dir = { playerPosition.x - position.x, playerPosition.y - position.y };
+            float len = std::hypot(dir.x, dir.y);
+            if (len > 0) {
+                moveDir = { dir.x / len, dir.y / len };
+                position.x += moveDir.x * (speed.x * 2.2f);
+                position.y += moveDir.y * (speed.y * 2.2f);
+            } else {
+                moveDir = { 0.0f, 0.0f };
+            }
+            break;
+        }
+
         case AIAction::RETREAT: {
-            // Retroceder con impulso sostenido (Backward / Amague táctico)
+            // Retroceso con impulso sostenido (Backward / Amague táctico)
             Vector2 dir = { position.x - playerPosition.x, position.y - playerPosition.y };
             float len = std::hypot(dir.x, dir.y);
             if (len > 0) {
                 moveDir = { dir.x / len, dir.y / len };
-                position.x += moveDir.x * (speed.x * 1.4f); // Impulso dinámico para el amague
+                position.x += moveDir.x * (speed.x * 1.4f);
                 position.y += moveDir.y * (speed.y * 1.4f);
             } else {
                 moveDir = { 0.0f, 0.0f };
@@ -304,13 +321,8 @@ void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenW
     if (currentAction == AIAction::ATTACK_LIGHT || currentAction == AIAction::ATTACK_HEAVY) {
         attackHitbox.SetActive(true);
         
-        // El ancho de la hitbox de ataque del enemigo
         float attackWidth = 60.0f; 
-        
-        // Determinamos la orientación según dónde esté el jugador respecto al enemigo:
         float offsetX = (playerPosition.x < position.x) ? (-attackWidth - 10.0f) : (size.x + 55.0f);
-        
-        // Ajustamos la altura al porcentaje correspondiente (torso)
         float offsetY = size.y * 0.6f; 
         
         attackHitbox.UpdatePosition(position.x, position.y, offsetX, offsetY);
@@ -320,36 +332,26 @@ void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenW
 }
 
 void EnemyAI::TakeDamage(float amount) {
-    // Calculamos el daño real aplicando el multiplicador de la dificultad
     float finalDamage = amount * damageMultiplier;
-    
     health -= finalDamage;
-    
-    if (health < 0.0f) {
-        health = 0.0f; // Evitamos números negativos
-    }
+    if (health < 0.0f) health = 0.0f;
 }
 
 void EnemyAI::Draw(AssetManager& manager, Vector2 playerPosition) {
-    std::string animKey = "C_Standing"; // Animación por defecto
+    std::string animKey = "C_Standing";
 
-    // Mapear la acción del árbol de decisión eligiendo entre caminar vertical u horizontal
     switch (currentAction) {
         case AIAction::APPROACH:
-            // Si el desplazamiento vertical es mayor que el horizontal, usa arriba o abajo
             if (std::abs(moveDir.y) > std::abs(moveDir.x)) {
-                if (moveDir.y < 0) {
-                    animKey = "C_WalkUP";   // Subiendo
-                } else {
-                    animKey = "C_WalkDown"; // Bajando
-                }
+                animKey = (moveDir.y < 0) ? "C_WalkUP" : "C_WalkDown";
             } else {
-                animKey = "C_Walk";         // Movimiento lateral (izquierda / derecha)
+                animKey = "C_Walk";
             }
             break;
 
+        case AIAction::DASH_FORWARD:
         case AIAction::RETREAT:
-            animKey = "C_Backward";         // Animación de amague / retroceso táctico
+            animKey = "C_Backward"; // Usa el sprite dinámico de deslizamiento
             break;
 
         case AIAction::ATTACK_LIGHT:
@@ -364,31 +366,24 @@ void EnemyAI::Draw(AssetManager& manager, Vector2 playerPosition) {
             break;
     }
 
-    // Buscar la animación en el AssetManager
     Animation* anim = manager.Search(animKey);
 
-    // Determinar si debe voltearse (flipX):
-    // Como ya no hay patrullaje, el enemigo siempre mira al jugador en combate,
-    // o se orienta según su dirección si está ejecutando un retroceso/amague.
     bool flipX = false;
     if (currentAction == AIAction::RETREAT) {
-        // Si retrocede, puede mantener la mirada opuesta al jugador o según su vector de movimiento
         flipX = (moveDir.x < 0);
     } else {
+        // En DASH_FORWARD, APPROACH o ataques siempre mira directamente al jugador
         flipX = (playerPosition.x < position.x);
     }
 
     if (anim != nullptr) {
-        // Dibujar usando la función de animación fluida
         UpdateAndDrawAnimation(*anim, position, flipX, 0.0f);
 
-        // Reiniciar el loop de la animación si llega al final (útil para ataques)
         if (anim->currentFrame >= anim->totalFrames - 1) {
             anim->currentFrame = 0;
             anim->tickCounter = 0;
         }
     } else {
-        // Fallback de seguridad por si la textura llegara a faltar
         DrawRectangleV(position, size, RED);
     }
 }

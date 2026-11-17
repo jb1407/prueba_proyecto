@@ -4,7 +4,7 @@
 Player::Player(float startX, float startY) : hurtbox(startX, startY, 115.0f, 200.0f, true),
     attackHitbox(startX, startY, 45.0f, 30.0f, false) {
     position = { startX, startY };
-    size = { 55.0f, 100.0f };
+    size = { 115.0f, 200.0f };
     speed = 4.0f; 
     maxHealth = 100.0f;
     health = 100.0f;
@@ -126,8 +126,26 @@ void Player::Update(AssetManager& assetManager, int screenWidth, int screenHeigh
 
     // 4. LÍMITES DE PANTALLA Y HITBOXES SIEMPRE ACTIVOS (Sin returns prematuros)
     ClampToScreen(screenWidth, screenHeight);
-    hurtbox.UpdatePosition(position.x, position.y, 0.0f, 0.0f);
+    float hurtboxWidth = size.x;
+    float hurtboxHeight = size.y;
+    float hurtboxOffsetX = 0.0f;
+    float hurtboxOffsetY = 0.0f;
 
+    // Si está ejecutando el deslizamiento/agachado (Backward), la caja se hace más baja
+    if (currentMove == Backward) {
+        hurtboxHeight = size.y * 0.55f; // Reduce la altura a algo más de la mitad
+        hurtboxOffsetY = size.y * 0.45f; // Desplaza la caja hacia abajo para cubrir el cuerpo deslizándose
+    }
+
+    if (flipX) {
+        hurtboxOffsetX = -size.x - 30.0f; 
+    }
+
+    // Actualizamos tamaño y posición de la hurtbox del jugador
+    hurtbox.SetSize(hurtboxWidth, hurtboxHeight);
+    hurtbox.UpdatePosition(position.x, position.y, 0.0f, hurtboxOffsetY);
+
+    // Actualización de la hitbox de ataque (Punch) se mantiene igual
     if (currentMove == Punch) {
         attackHitbox.SetActive(true);
         float attackWidth = 60.0f; 

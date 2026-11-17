@@ -316,7 +316,18 @@ void EnemyAI::Update(Vector2 playerPosition, bool isPlayerAttacking, int screenW
     // 4. Mantener al enemigo confinado dentro de los límites de la ventana
     ClampToScreen(screenWidth, screenHeight);
 
-    hurtbox.UpdatePosition(position.x, position.y, 0.0f, 0.0f);
+    // --- NUEVO: Ajustar tamaño y posición de la Hurtbox del enemigo según su acción ---
+    float hurtboxWidth = size.x;
+    float hurtboxHeight = size.y;
+    float hurtboxOffsetY = 0.0f;
+
+    if (currentAction == AIAction::RETREAT) {
+        hurtboxHeight = size.y * 0.55f; // Reduce la altura al 55% al retroceder
+        hurtboxOffsetY = size.y * 0.45f; // Desplaza la caja hacia abajo
+    }
+
+    hurtbox.SetSize(hurtboxWidth, hurtboxHeight);
+    hurtbox.UpdatePosition(position.x, position.y, 0.0f, hurtboxOffsetY);
 
     if (currentAction == AIAction::ATTACK_LIGHT || currentAction == AIAction::ATTACK_HEAVY) {
         attackHitbox.SetActive(true);

@@ -136,12 +136,12 @@ int main() {
                 // Dibujar al enemigo, hitboxes, hurtboxes y HUD de vida
                 enemy->Draw(assetManager, player->getPosition());
 
-                /*DrawRectangleRec(player->GetHurtbox().GetRect(), Fade(BLUE, 0.4f));
+                DrawRectangleRec(player->GetHurtbox().GetRect(), Fade(BLUE, 0.4f));
                 DrawRectangleRec(enemy->GetHurtbox().GetRect(), Fade(BLUE, 0.4f));
 
                 player->GetAttackHitbox().Draw(RED);
                 enemy->GetAttackHitbox().Draw(RED);
-                */                
+                        
 
                 HUD::Draw(
                     screenWidth, screenHeight, 

@@ -22,3 +22,9 @@ void Hitbox::Draw(Color color) const {
         DrawRectangleLinesEx(rect, 1.5f, color);
     }
 }
+
+// Al final de src/hitbox.cpp
+void Hitbox::SetSize(float width, float height) {
+    rect.width = width;
+    rect.height = height;
+}

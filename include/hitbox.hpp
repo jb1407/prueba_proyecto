@@ -13,6 +13,8 @@ public:
     // Actualiza la posición de la hitbox en base a la posición del personaje
     void UpdatePosition(float parentX, float parentY, float offsetX, float offsetY);
 
+    void SetSize(float width, float height);
+
     // Verifica si colisiona con otro rectángulo (como la hurtbox del rival)
     bool CheckCollision(const Rectangle& target) const;
 

@@ -77,10 +77,15 @@ int main() {
                 enemy->Update(player->getPosition(), IsKeyDown(KEY_SPACE), screenWidth, screenHeight);
 
                 if (player->GetAttackHitbox().CheckCollision(enemy->GetHurtbox().GetRect())) {
-                    enemy->TakeDamage(0.5f); 
+                    if (!player->HasHitEnemy()) {
+                        enemy->TakeDamage(10.0f); 
+                        player->SetHasHitEnemy(true); // Bloquea múltiples daños en el mismo golpe
+                    }
                 }
                 if (enemy->GetAttackHitbox().CheckCollision(player->GetHurtbox().GetRect())) {
-                    player->TakeDamage(2.0f); 
+                    float baseDamage = 10.0f; // Daño base del enemigo en dificultad Medium (multiplicador 1.0)
+                    float finalDamage = baseDamage * enemy->GetDamageMultiplier(); // Se adapta a Easy, Medium o Hard
+                    player->TakeDamage(finalDamage);
                 }
 
                 // Comprobar condiciones de fin de partida

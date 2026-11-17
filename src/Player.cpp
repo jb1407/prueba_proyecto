@@ -18,6 +18,7 @@ Player::Player(float startX, float startY) : hurtbox(startX, startY, 115.0f, 200
 
     invincibilityTimer = 0.0f;
     isInvincible = false;
+    hasHitEnemy = false;
 }
 
 void Player::ClampToScreen(int screenWidth, int screenHeight) {
@@ -93,6 +94,7 @@ void Player::Update(AssetManager& assetManager, int screenWidth, int screenHeigh
         }
         else if (IsKeyPressed(KEY_SPACE)) {
             currentMove = Punch;
+            hasHitEnemy = false;
         }
         else {
             Vector2 direction = { 0.0f, 0.0f };

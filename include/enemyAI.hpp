@@ -96,6 +96,7 @@ public:
 
     void TakeDamage(float amount);
     bool IsDead() const { return health <= 0.0f; }
+    float GetDamageMultiplier() const { return damageMultiplier; }
 };
 
 #endif

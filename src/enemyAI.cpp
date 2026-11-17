@@ -17,7 +17,7 @@ EnemyAI::EnemyAI(float startX, float startY, Difficulty diff) : hurtbox(startX, 
             reactionDelay = 0.35f;
             attackRange = 50.0f;
             alertRange = 300.0f;
-            damageMultiplier = 1.25f;
+            damageMultiplier = 0.80f;
             break;
 
         case Difficulty::MEDIUM:
@@ -33,7 +33,7 @@ EnemyAI::EnemyAI(float startX, float startY, Difficulty diff) : hurtbox(startX, 
             reactionDelay = 0.15f;
             attackRange = 70.0f;
             alertRange = 600.0f;
-            damageMultiplier = 0.75f;
+            damageMultiplier = 1.25f;
             break;
     }
 

@@ -27,6 +27,7 @@ private:
 
     float invincibilityTimer;
     bool isInvincible;
+    bool hasHitEnemy;
 
     void ClampToScreen(int screenWidth, int screenHeight);
 
@@ -54,6 +55,9 @@ public:
     // En Player.hpp, reemplaza la línea de GetHurtbox por:
     Hitbox& GetHurtbox() { return hurtbox; }
     const Hitbox& GetAttackHitbox() const { return attackHitbox; }
+
+    bool HasHitEnemy() const { return hasHitEnemy; }
+    void SetHasHitEnemy(bool hit) { hasHitEnemy = hit; }
 };
 
 #endif

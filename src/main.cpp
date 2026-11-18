@@ -4,6 +4,7 @@
 #include "Player.hpp"
 #include "enemyAI.hpp"
 #include "hud.hpp"
+#include "Weapon.hpp"
 
 // Estado del juego para controlar el combate y el fin de partida
 enum GameState {
@@ -45,6 +46,8 @@ int main() {
     EnemyAI* enemy = nullptr;
     GameState gameState = PLAYING;
 
+    Weapon* currentWeapon = nullptr;
+
     while (!WindowShouldClose()) {
         // ==========================================
         // 1. ACTUALIZACIÓN LÓGICA SEGÚN LA PANTALLA
@@ -59,6 +62,7 @@ int main() {
                 // Limpiar instancias previas si existían para evitar fugas de memoria
                 if (player) delete player;
                 if (enemy) delete enemy;
+                if (currentWeapon) { delete currentWeapon; currentWeapon = nullptr; } // Limpieza extra al cargar partida
 
                 // Mapear la dificultad seleccionada en el menú a la IA
                 Difficulty diff = (selectedDifficulty == 0) ? Difficulty::EASY : 
@@ -75,6 +79,39 @@ int main() {
             if (gameState == PLAYING && player && enemy) {
                 player->Update(assetManager, screenWidth, screenHeight);
                 enemy->Update(player->getPosition(), IsKeyDown(KEY_SPACE), screenWidth, screenHeight);
+
+
+                // --- LÓGICA DE APARICIÓN Y GESTIÓN DE ARMAS ---
+                float dt = GetFrameTime();
+                if (currentWeapon == nullptr || !currentWeapon->IsActive()) {
+                    if (currentWeapon != nullptr) {
+                        delete currentWeapon;
+                        currentWeapon = nullptr;
+                    }
+
+                    float randomX = (float)GetRandomValue(100, screenWidth - 150);
+                    float randomY = (float)GetRandomValue(150, screenHeight - 200);
+                    WeaponType randomType = static_cast<WeaponType>(GetRandomValue(0, 2));
+
+                    currentWeapon = new Weapon(randomX, randomY, randomType, 10.0f); // 10 segundos de vida útil
+                } 
+                else {
+                    currentWeapon->Update(dt);
+
+                    // Comprobamos si el jugador pasa por encima del arma para recogerla
+                    if (player->GetHurtbox().CheckCollision(currentWeapon->GetPickupHitbox().GetRect())) {
+                        player->EquipWeapon(currentWeapon->GetType(), 10.0f); // Se la equipa por 10 segundos
+                        currentWeapon->SetActive(false); // Al desactivarla, se reemplazará de inmediato en el siguiente ciclo
+                        // TODO: Aquí le sumaremos el buff al jugador en el futuro
+                    }
+                    // 2. Comprobar si el enemigo la recoge
+                    else if (enemy->GetHurtbox().CheckCollision(currentWeapon->GetPickupHitbox().GetRect())) {
+                        enemy->EquipWeapon(currentWeapon->GetType(), 10.0f); // El enemigo se la equipa
+                        currentWeapon->SetActive(false); // Desactiva el arma -> El enemigo se queda con el recurso
+                        // TODO: Aquí luego le aplicaremos el buff correspondiente al enemigo (o evitar que el jugador la tome)
+                    }
+                }
+                // ----------------------------------------------
 
                 if (player->GetAttackHitbox().CheckCollision(enemy->GetHurtbox().GetRect())) {
                     if (!player->HasHitEnemy()) {
@@ -100,6 +137,8 @@ int main() {
                 if (IsKeyPressed(KEY_SPACE)) {
                     currentScreen = SCREEN_MAIN_MENU;
                     gameState = PLAYING;
+                    // Limpiar arma si se sale al menú
+                    if (currentWeapon) { delete currentWeapon; currentWeapon = nullptr; }
                 }
             }
         } 
@@ -146,7 +185,12 @@ int main() {
 
                 player->GetAttackHitbox().Draw(RED);
                 enemy->GetAttackHitbox().Draw(RED);
-                        
+
+                // --- Dibujar el arma en el suelo si está activa ---
+                if (currentWeapon != nullptr && currentWeapon->IsActive()) {
+                    currentWeapon->Draw();
+                }
+                // -------------------------------------------------
 
                 HUD::Draw(
                     screenWidth, screenHeight, 
@@ -179,6 +223,7 @@ int main() {
     // Limpieza de memoria al cerrar la aplicación
     if (player) delete player;
     if (enemy) delete enemy;
+    if (currentWeapon) delete currentWeapon; // Limpieza del arma
 
     CloseWindow();
     return 0;

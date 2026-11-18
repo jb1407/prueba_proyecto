@@ -4,6 +4,7 @@
 #include "raylib.h"
 #include "Mechanics.hpp" // Esto ya incluye LoadAssets.hpp automáticamente
 #include "hitbox.hpp"    // <-- NUEVO: Incluimos el módulo de hitboxes
+#include "Weapon.hpp"
 
 class Player {
 private:
@@ -29,8 +30,10 @@ private:
     bool isInvincible;
     bool hasHitEnemy;
 
-    void ClampToScreen(int screenWidth, int screenHeight);
+    WeaponType equippedWeapon = WeaponType::NONE;
+    float weaponDurationTimer = 0.0f;
 
+    void ClampToScreen(int screenWidth, int screenHeight);
 public:
     // Constructor
     Player(float startX, float startY);
@@ -58,6 +61,30 @@ public:
 
     bool HasHitEnemy() const { return hasHitEnemy; }
     void SetHasHitEnemy(bool hit) { hasHitEnemy = hit; }
+
+    void EquipWeapon(WeaponType type, float duration = 10.0f) {
+        equippedWeapon = type;
+        weaponDurationTimer = duration;
+        // Aquí en el futuro llamaremos a una función genérica: ApplyWeaponEffect();
+    }
+
+    bool HasWeapon() const {
+        return equippedWeapon != WeaponType::NONE;
+    }
+
+    WeaponType GetEquippedWeapon() const {
+        return equippedWeapon;
+    }
+
+    // Método para actualizar el estado del arma (desgaste, temporizador, etc.)
+    void UpdateWeapon(float dt) {
+        if (HasWeapon()) {
+            weaponDurationTimer -= dt;
+            if (weaponDurationTimer <= 0.0f) {
+                equippedWeapon = WeaponType::NONE; // Se acaba el efecto del arma
+            }
+        }
+    }
 };
 
 #endif

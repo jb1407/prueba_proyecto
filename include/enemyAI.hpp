@@ -6,6 +6,7 @@
 #include "mtreenode.hpp"
 #include "Mechanics.hpp"
 #include "hitbox.hpp"
+#include "Weapon.hpp"
 
 using namespace Designar;
 
@@ -66,6 +67,9 @@ private:
     Hitbox hurtbox;
     Hitbox attackHitbox;
 
+    WeaponType equippedWeapon = WeaponType::NONE;
+    float weaponDurationTimer = 0.0f;
+
     MTreeNode<DecisionKey>* decisionTreeRoot;
 
     MTreeNode<DecisionKey>* BuildEasyTree();
@@ -97,6 +101,30 @@ public:
     void TakeDamage(float amount);
     bool IsDead() const { return health <= 0.0f; }
     float GetDamageMultiplier() const { return damageMultiplier; }
+
+    void EquipWeapon(WeaponType type, float duration = 10.0f) {
+        equippedWeapon = type;
+        weaponDurationTimer = duration;
+        // Aquí en el futuro llamaremos a una función genérica: ApplyWeaponEffect();
+    }
+
+    bool HasWeapon() const {
+        return equippedWeapon != WeaponType::NONE;
+    }
+
+    WeaponType GetEquippedWeapon() const {
+        return equippedWeapon;
+    }
+
+    // Método para actualizar el estado del arma (desgaste, temporizador, etc.)
+    void UpdateWeapon(float dt) {
+        if (HasWeapon()) {
+            weaponDurationTimer -= dt;
+            if (weaponDurationTimer <= 0.0f) {
+                equippedWeapon = WeaponType::NONE; // Se acaba el efecto del arma
+            }
+        }
+    }
 };
 
 #endif

@@ -1,7 +1,5 @@
 #include "Mechanics.hpp"
 
-int FrameCounter = 0;
-
 // Función auxiliar estática o wrapper para el hash de strings en DESIGNAR
 static Designar::nat_t hashString(const std::string& k) {return Designar::super_fast_hash(k);}
 

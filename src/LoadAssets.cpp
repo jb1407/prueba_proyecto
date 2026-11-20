@@ -12,20 +12,17 @@ void AssetManager::insert(const std::string& _Key, const Animation& _anim)
 
 Animation* AssetManager::Search(const std::string& _Key)
 {
-    // Búsqueda heterogénea eficiente provista por openhash.hpp[cite: 11]
+    // Búsqueda heterogénea eficiente provista por openhash.hpp
     AssetEntry* entry = table.search_by(_Key, [](const std::string& k) {return Designar::super_fast_hash(k);});
 
-    if (entry != nullptr) 
-    {
-        return &(entry->animation);
-    }
+    if (entry != nullptr) {return &(entry->animation);}
 
     return nullptr;
 }
 
 AssetManager::~AssetManager()
 {
-    // Iteramos sobre los elementos ocupados para liberar las texturas de la GPU en Raylib[cite: 11]
+    // Iteramos sobre los elementos ocupados para liberar las texturas de la GPU en Raylib
     for (AssetEntry& entry : table) 
     {
         UnloadTexture(entry.animation.texture);
@@ -56,6 +53,8 @@ void LoadAssetsToTable(AssetManager& manager)
 
     // Cargar animaciones de las armas
     //Neon Sword Red
+    Img = LoadImage("assets/sprites/character/Weapons/NSR/NeonSwordRed.png");
+    manager.insert("NeonSwordRed", LoadAsset(Img, 1, 1, 1.0f));
 
     Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Normal1(Character).png");
     manager.insert("NSR_Normal1(Character)", LoadAsset(Img, 9, 4, 2.0f));
@@ -70,13 +69,13 @@ void LoadAssetsToTable(AssetManager& manager)
     manager.insert("NSR_Normal2(Sword)", LoadAsset(Img, 19, 2, 1.5f));
 
     Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Special1(Character).png");
-    manager.insert("NSR_Special1(Character)", LoadAsset(Img, 10, 4, 3.0f));
+    manager.insert("NSR_Special1(Character)", LoadAsset(Img, 18, 3, 1.0f));
 
     Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Special1(Sword).png");
     manager.insert("NSR_Special1(Sword)", LoadAsset(Img, 18, 3, 1.5f));
 
     Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Special1(Circle).png");
-    manager.insert("NSR_Special1(Circle)", LoadAsset(Img, 20, 3, 2.0f));
+    manager.insert("NSR_Special1(Circle)", LoadAsset(Img, 26, 3, 1.0f));
 }
 
 Animation LoadAsset(Image& img, int TextureFrames, int FrameSpeed, float ScaleModifier)
@@ -85,7 +84,7 @@ Animation LoadAsset(Image& img, int TextureFrames, int FrameSpeed, float ScaleMo
     float HeightObj = ((float)GetScreenHeight() / 4) * ScaleModifier; 
 
     float Scale = HeightObj / (float)img.height;
-    int NewWidth = (int)(img.width * Scale);
+    float NewWidth = (float)(img.width * Scale);
     int NewHeight = (int)HeightObj;
     ImageResizeNN(&img, NewWidth, NewHeight);
 
@@ -94,7 +93,7 @@ Animation LoadAsset(Image& img, int TextureFrames, int FrameSpeed, float ScaleMo
 
     UnloadImage(img);
 
-    Animation Anim = {AnimTexture, TextureFrames, AnimTexture.width/TextureFrames, AnimTexture.height, FrameSpeed, 0, 0};
+    Animation Anim = {AnimTexture, TextureFrames, (float)AnimTexture.width/TextureFrames, (float)AnimTexture.height, FrameSpeed, 0, 0};
 
     return Anim;
 }

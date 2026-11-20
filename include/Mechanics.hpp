@@ -8,17 +8,15 @@ class Move
     private:
     std::string At_Name;
     int State;      
-    bool CoolDown;
 
-    Animation* Anim1 = nullptr;
-    Animation* Anim2 = nullptr;
-    Animation* Anim3 = nullptr; 
+    Animation* Anim1;
+    Animation* Anim2;
+    Animation* Anim3; 
 
     Vector2 OffSet1 = {0.0f, 0.0f};
     Vector2 OffSet2 = {0.0f, 0.0f};
     Vector2 OffSet3 = {0.0f, 0.0f};
 
-    // Declarada una sola vez
     struct FollowUpComparator 
     {
         bool operator()(const std::string& a, const std::string& b) const { return a == b; }
@@ -31,24 +29,22 @@ class Move
     Move() = delete; 
     Move(const Move&) = delete;
 
-    Move(const std::string&, int, bool, Animation*, Animation*, Animation*, Vector2&, Vector2&, Vector2&);
+    Move(const std::string&, int, Animation*, Animation*, Animation*, Vector2&, Vector2&, Vector2&);
 
     Animation* GetAnimation1() const;
     Animation* GetAnimation2() const;
     Animation* GetAnimation3() const;
    
-    bool GetCoolDown();
     bool GetChainable();
     std::string GetAtName();
 
     void SetAtName(std::string);
     void SetState(int);
-    void SetCoolDown(bool);
 
     void AddAllowedFollowUp(const std::string& nextMoveName); 
     bool CanChainInto(const std::string& nextMoveName) const;
 
-    void AnimationLogicAndDraw(int, int, bool, float); 
+    void AnimationLogicAndDraw(int, int, bool, float, bool); //los tres ultimos booleanos son quienes dicen si una animacion debe quedarse estática
 
     ~Move();
 };
@@ -56,20 +52,26 @@ class Move
 class CombatManager
 {
     private:
-    std::string PrevMoveName = " "; 
-    Move* CurrentMove = nullptr;
+    Move* PrevMove; 
+    Move* CurrentMove;
     int CurrentMode; 
 
     public:
     CombatManager() = delete;
     CombatManager& operator=(const CombatManager&) = delete;
     CombatManager(CombatManager&) = delete;
-    CombatManager(const std::string&, Move*, int);
+    CombatManager(Move*, Move*, int);
 
-    bool ValidateMove(const Move&); 
-    int SetState(int);
-    void ExecuteMove();
-    void UpdateAnExecute(int, int, bool, float);
+    int GetMode() const;
+
+    void SetPrevMove(Move*);
+    void SetCurrentMove(Move*);
+    void SetMode(int);
+
+    bool ValidateMove();  //Valida que el movimiento actual no sea nullptr
+    bool ValidatePrevMove(); //Valida si el movimiento actual es encadenable con el previo
+    
+    void ExecuteMove(int, int, bool, float, bool);
 };
 
 #endif

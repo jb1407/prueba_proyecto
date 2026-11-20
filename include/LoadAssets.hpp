@@ -11,8 +11,8 @@
 struct Animation {
     Texture2D texture;
     int totalFrames;   // Frames totales del sprite
-    int frameWidth;    // Ancho de cada frame
-    int frameHeight;   // Altura de cada frame
+    float frameWidth;    // Ancho de cada frame
+    float frameHeight;   // Altura de cada frame
     int frameSpeed;    // Ticks necesarios para cambiar de fotograma
     int tickCounter;   // Contador interno de ticks del juego
     int currentFrame;  // Fotograma actual que se está mostrando

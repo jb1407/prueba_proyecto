@@ -6,6 +6,7 @@
 #include <string>
 #include <openhash.hpp>
 #include <chainedhash.hpp>
+#include <vector>
 
 // Estructura que almacena todos los datos necesarios para reproducir el spritesheet
 struct Animation {
@@ -14,8 +15,6 @@ struct Animation {
     float frameWidth;    // Ancho de cada frame
     float frameHeight;   // Altura de cada frame
     int frameSpeed;    // Ticks necesarios para cambiar de fotograma
-    int tickCounter;   // Contador interno de ticks del juego
-    int currentFrame;  // Fotograma actual que se está mostrando
 };
 
 // Clase que almacenará los assets cargados y se facilite su uso en otros archivos (Tabla Hash)

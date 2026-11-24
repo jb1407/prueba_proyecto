@@ -93,7 +93,7 @@ Animation LoadAsset(Image& img, int TextureFrames, int FrameSpeed, float ScaleMo
 
     UnloadImage(img);
 
-    Animation Anim = {AnimTexture, TextureFrames, (float)AnimTexture.width/TextureFrames, (float)AnimTexture.height, FrameSpeed, 0, 0};
+    Animation Anim = {AnimTexture, TextureFrames, (float)AnimTexture.width/TextureFrames, (float)AnimTexture.height, FrameSpeed};
 
     return Anim;
 }

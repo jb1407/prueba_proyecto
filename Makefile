@@ -6,7 +6,16 @@ CXXFLAGS = -std=c++17 -Wall -Iinclude -Isrc -Isrc/DESIGNAR/include -Isrc/DESIGNA
 LDFLAGS = lib/libraylib.a -lGL -lm -lpthread -ldl -lrt -lX11
 
 # Ahora que DESIGNAR está dentro de src/, el find detectará todos sus .cpp automáticamente
-SRC = $(shell find src -name "*.cpp" -not -path "*/samples/*" -not -path "*/tests/*")
+# SRC = $(shell find src -name "*.cpp" -not -path "*/samples/*" -not -path "*/tests/*")
+
+SRC = src/main.cpp \
+      src/CombatSystem.cpp \
+      src/LoadAssets.cpp \
+      src/Mechanics.cpp \
+      src/PlayerAndWeapons.cpp \
+	  src/enemyAI.cpp \
+      $(shell find src/DESIGNAR -name "*.cpp" -not -path "*/samples/*" -not -path "*/tests/*")
+
 OBJ = $(SRC:.cpp=.o)
 TARGET = game
 

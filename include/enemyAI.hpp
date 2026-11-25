@@ -2,7 +2,44 @@
 #define ENEMYAI_HPP
 
 #include <raylib.h>
+#include <functional>
 #include "CombatSystem.hpp"
+#include "mtreenode.hpp"
+
+using namespace Designar;
+
+enum class Difficulty {
+    EASY,
+    MEDIUM,
+    HARD
+};
+
+enum class AIAction {
+    IDLE,
+    APPROACH,
+    DASH_FORWARD,
+    RETREAT,
+    ATTACK_LIGHT,
+    ATTACK_HEAVY,
+    BLOCK
+};
+
+enum class NodeType {
+    CONDITION,
+    ACTION
+};
+
+struct DecisionKey {
+    NodeType type;
+    AIAction action;
+    std::function<bool(Vector2 pos, Vector2 targetPos, bool isTargetAttacking)> condition;
+
+    DecisionKey(AIAction act)
+        : type(NodeType::ACTION), action(act), condition(nullptr) {}
+
+    DecisionKey(std::function<bool(Vector2, Vector2, bool)> cond)
+        : type(NodeType::CONDITION), action(AIAction::IDLE), condition(cond) {}
+};
 
 class EnemyAI {
 private:
@@ -11,6 +48,12 @@ private:
     Vector2 dashSpeed;
     Vector2 activeBackVel = { 0.0f, 0.0f };
     Vector2 size;
+
+    float attackRange = 135.0f;
+    float alertRange = 520.0f;
+    AIAction currentAction = AIAction::IDLE;
+    float decisionTimer = 0.0f;
+    float decisionInterval = 0.35f;
 
     MoveSetData moveSetData;
     MoveSetBase moveSet;
@@ -24,13 +67,27 @@ private:
     bool isAttacking = false;
     bool isBacking = false;
 
+    MTreeNode<DecisionKey>* decisionTreeRoot = nullptr;
+
+    MTreeNode<DecisionKey>* BuildDecisionTree();
+    void FreeDecisionTree(MTreeNode<DecisionKey>* node);
+
     void ClampToScreen(int screenWidth, int screenHeight);
     void RunMove(Move* targetMove, float dx, float dy);
+    void FaceTarget(Vector2 targetPos);
 
 public:
     EnemyAI(float startX, float startY, AssetManager& assets);
-    ~EnemyAI() = default;
+    ~EnemyAI();
 
+    // Evalúa el árbol de decisiones y actualiza/ejecuta el movimiento del enemigo
+    void Update(Vector2 targetPos, bool isTargetAttacking, int screenWidth, int screenHeight);
+    AIAction EvaluateTree(Vector2 targetPos, bool isTargetAttacking) const;
+
+    // Ejecuta una acción simple en función de la posición del objetivo
+    void ExecuteAction(AIAction action, Vector2 targetPos, int screenWidth, int screenHeight);
+
+    // Movimientos básicos directos (útiles para pruebas o llamadas puntuales)
     void MoveUp(int screenWidth, int screenHeight);
     void MoveDown(int screenWidth, int screenHeight);
     void MoveLeft(int screenWidth, int screenHeight);
@@ -42,6 +99,7 @@ public:
     void UpdateFrame(int screenWidth, int screenHeight);
 
     Vector2 GetPosition() const { return position; }
+    AIAction GetCurrentAction() const { return currentAction; }
     bool IsBusy() const { return isAttacking || isBacking; }
 };
 

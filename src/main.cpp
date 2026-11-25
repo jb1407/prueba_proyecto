@@ -2,6 +2,21 @@
 #include "CombatSystem.hpp"
 #include "enemyAI.hpp"
 
+namespace {
+const char* ActionToString(AIAction action) {
+    switch (action) {
+        case AIAction::IDLE:          return "IDLE";
+        case AIAction::APPROACH:      return "APPROACH";
+        case AIAction::DASH_FORWARD:  return "DASH_FORWARD";
+        case AIAction::RETREAT:       return "RETREAT";
+        case AIAction::ATTACK_LIGHT:  return "ATTACK_LIGHT";
+        case AIAction::ATTACK_HEAVY:  return "ATTACK_HEAVY";
+        case AIAction::BLOCK:         return "BLOCK";
+        default:                      return "UNKNOWN";
+    }
+}
+} // namespace
+
 int main()
 {
     const int screenWidth = 1280;
@@ -35,7 +50,7 @@ int main()
     // (Player*, depthSwapStart, depthSwapEnd, flipX, rotation, moveEndOrReset, frameMoveEnd)
     Combat combatP1(&player1, 0, 0, false, 0.0f, false, 0);
 
-    // 5. Crear enemigo de prueba (inicializa CPUPosition y su MoveSetBase)
+    // 5. Crear enemigo de prueba (inicializa CPUPosition, su MoveSetBase y su árbol de decisiones)
     EnemyAI enemy(screenWidth * 0.65f, screenHeight * 0.5f, assets);
 
     while (!WindowShouldClose())
@@ -46,56 +61,13 @@ int main()
         // Jugador 1
         combatP1.UpdateMoveBasePlayer1();
 
-        // Prueba manual de movimientos básicos del enemigo
-        if (enemy.IsBusy())
-        {
-            enemy.UpdateFrame(screenWidth, screenHeight);
-        }
-        else if (IsKeyPressed(KEY_K))
-        {
-            enemy.AttackPunch(screenWidth, screenHeight);
-        }
-        else if (IsKeyPressed(KEY_L))
-        {
-            float dirX = 0.0f;
-            float dirY = 0.0f;
+        // Enemigo autónomo evaluando el árbol respecto a PlayerPosition
+        // Si tu clase Player expone un getter o campo de ataque, cámbialo aquí (p. ej. player1.GetIsAttack())
+        bool isP1Attacking = false;
+        enemy.Update(PlayerPosition, isP1Attacking, screenWidth, screenHeight);
 
-            if (IsKeyDown(KEY_RIGHT)) dirX = 1.0f;
-            else if (IsKeyDown(KEY_LEFT)) dirX = -1.0f;
-
-            if (IsKeyDown(KEY_UP)) dirY = -1.0f;
-            else if (IsKeyDown(KEY_DOWN)) dirY = 1.0f;
-
-            // Si no hay ninguna dirección presionada, retrocede hacia la izquierda por defecto
-            if (dirX == 0.0f && dirY == 0.0f)
-            {
-                dirX = -1.0f;
-            }
-
-            enemy.DashBackward(dirX, dirY, screenWidth, screenHeight);
-        }
-        else if (IsKeyDown(KEY_UP))
-        {
-            enemy.MoveUp(screenWidth, screenHeight);
-        }
-        else if (IsKeyDown(KEY_DOWN))
-        {
-            enemy.MoveDown(screenWidth, screenHeight);
-        }
-        else if (IsKeyDown(KEY_LEFT))
-        {
-            enemy.MoveLeft(screenWidth, screenHeight);
-        }
-        else if (IsKeyDown(KEY_RIGHT))
-        {
-            enemy.MoveRight(screenWidth, screenHeight);
-        }
-        else
-        {
-            enemy.StandIdle(screenWidth, screenHeight);
-        }
-
-        DrawText("P1: WASD, I (Punch), O (BackWard) | CPU: Flechas, K (Punch), L (BackWard)", 20, 20, 20, RAYWHITE);
+        DrawText("P1: WASD, I (Punch), O (BackWard) | CPU: Autonomo (Arbol de Decisiones)", 20, 20, 20, RAYWHITE);
+        DrawText(TextFormat("CPU Action: %s", ActionToString(enemy.GetCurrentAction())), 20, 50, 20, YELLOW);
         EndDrawing();
     }
 

@@ -34,25 +34,22 @@ void LoadAssetsToTable(AssetManager& manager)
 {
     // Cargar animaciones base del personaje
     Image Img = LoadImage("assets/sprites/character/C_MoveSet_Base/C_Backward/C_Backward.png");
-    manager.insert("C_Backward", LoadAsset(Img, 9, 5, 2.0f));
+    manager.insert("C_Backward", LoadAsset(Img, 9, 3, 2.0f));
 
     Img = LoadImage("assets/sprites/character/C_MoveSet_Base/C_Walk/C_Walk.png");
-    manager.insert("C_Walk", LoadAsset(Img, 12, 5, 2.0f));
+    manager.insert("C_Walk", LoadAsset(Img, 12, 3, 2.0f));
 
     Img = LoadImage("assets/sprites/character/C_MoveSet_Base/C_Walk_UP/C_WalkUP.png");
-    manager.insert("C_WalkUP", LoadAsset(Img, 8, 8, 2.0f));
+    manager.insert("C_WalkUP", LoadAsset(Img, 8, 3, 2.0f));
 
     Img = LoadImage("assets/sprites/character/C_MoveSet_Base/C_Walk_Down/C_WalkDown.png");
-    manager.insert("C_WalkDown", LoadAsset(Img, 8, 8, 2.0f));
+    manager.insert("C_WalkDown", LoadAsset(Img, 8, 3, 2.0f));
 
     Img = LoadImage("assets/sprites/character/C_MoveSet_Base/C_De_Pie/C_De_Pie.png");
     manager.insert("C_Standing", LoadAsset(Img, 7, 9, 2.0f));
 
     Img = LoadImage("assets/sprites/character/C_MoveSet_Base/C_Punch/C_Punch.png");
-<<<<<<< HEAD
-    manager.insert("C_Punch", LoadAsset(Img, 10, 2));
-=======
-    manager.insert("C_Punch", LoadAsset(Img, 10, 4, 2.0f));
+    manager.insert("C_Punch", LoadAsset(Img, 10, 1, 2.0f));
 
     // Cargar animaciones de las armas
     //Neon Sword Red
@@ -79,7 +76,6 @@ void LoadAssetsToTable(AssetManager& manager)
 
     Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Special1(Circle).png");
     manager.insert("NSR_Special1(Circle)", LoadAsset(Img, 26, 3, 1.0f));
->>>>>>> assets-and-mechanics
 }
 
 Animation LoadAsset(Image& img, int TextureFrames, int FrameSpeed, float ScaleModifier)

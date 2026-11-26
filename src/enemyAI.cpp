@@ -398,3 +398,9 @@ void EnemyAI::Draw(AssetManager& manager, Vector2 playerPosition) {
         DrawRectangleV(position, size, RED);
     }
 }
+
+void EnemyAI::EquipWeapon(WeaponType type, float duration = 10.0f) {
+    equippedWeapon = type;
+    weaponDuration = duration;
+    // Aquí en el futuro llamaremos a una función genérica: ApplyWeaponEffect();
+}

@@ -94,7 +94,7 @@ public:
     void ExecuteAction(AIAction action, Vector2 playerPos, float dt);
 
     void TakeDamage(float amount);
-    bool IsDead() const;
+    bool IsDead() const { return health <= 0.0f; }
 
     void EquipWeapon(WeaponType type, float duration);
     void UpdateWeapon(float dt);

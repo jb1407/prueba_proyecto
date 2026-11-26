@@ -32,12 +32,12 @@ enum class NodeType {
 struct DecisionKey {
     NodeType type;
     AIAction action;
-    std::function<bool(Vector2 pos, Vector2 targetPos, bool isTargetAttacking)> condition;
+    std::function<bool(Vector2 pos, Vector2 targetPos, bool isTargetAttacking, int atkCount)> condition;
 
     DecisionKey(AIAction act)
         : type(NodeType::ACTION), action(act), condition(nullptr) {}
 
-    DecisionKey(std::function<bool(Vector2, Vector2, bool)> cond)
+    DecisionKey(std::function<bool(Vector2, Vector2, bool, int)> cond)
         : type(NodeType::CONDITION), action(AIAction::IDLE), condition(cond) {}
 };
 
@@ -48,12 +48,19 @@ private:
     Vector2 dashSpeed;
     Vector2 activeBackVel = { 0.0f, 0.0f };
     Vector2 size;
+    Vector2 lastTargetPos = { 0.0f, 0.0f };
 
     float attackRange = 135.0f;
     float alertRange = 520.0f;
     AIAction currentAction = AIAction::IDLE;
     float decisionTimer = 0.0f;
-    float decisionInterval = 0.35f;
+    float decisionInterval = 0.25f;
+
+    Difficulty currentDifficulty = Difficulty::MEDIUM;
+    int playerAttackCounter = 0;
+    int consecutiveAttacks = 0;
+    const int maxConsecutiveAttacks = 2;
+    bool pendingPostAttackRetreat = false;
 
     MoveSetData moveSetData;
     MoveSetBase moveSet;
@@ -69,15 +76,18 @@ private:
 
     MTreeNode<DecisionKey>* decisionTreeRoot = nullptr;
 
-    MTreeNode<DecisionKey>* BuildDecisionTree();
-    void FreeDecisionTree(MTreeNode<DecisionKey>* node);
+    MTreeNode<DecisionKey>* BuildEasyTree();
+    MTreeNode<DecisionKey>* BuildMediumTree();
+    MTreeNode<DecisionKey>* BuildHardTree();
+    MTreeNode<DecisionKey>* BuildDecisionTree(Difficulty diff);
 
+    void HandlePostAttack(int screenWidth, int screenHeight);
     void ClampToScreen(int screenWidth, int screenHeight);
     void RunMove(Move* targetMove, float dx, float dy);
     void FaceTarget(Vector2 targetPos);
 
 public:
-    EnemyAI(float startX, float startY, AssetManager& assets);
+    EnemyAI(float startX, float startY, AssetManager& assets, Difficulty diff = Difficulty::MEDIUM);
     ~EnemyAI();
 
     // Evalúa el árbol de decisiones y actualiza/ejecuta el movimiento del enemigo
@@ -100,6 +110,7 @@ public:
 
     Vector2 GetPosition() const { return position; }
     AIAction GetCurrentAction() const { return currentAction; }
+    Difficulty GetDifficulty() const { return currentDifficulty; }
     bool IsBusy() const { return isAttacking || isBacking; }
 };
 

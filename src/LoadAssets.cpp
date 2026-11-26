@@ -38,16 +38,16 @@ void LoadAssetsToTable(AssetManager& manager)
     manager.insert("C_Backward", LoadAsset(Img, 9, 3, 1.5f));
 
     Img = LoadImage("assets/sprites/character/C_MoveSet_Base/C_Walk/C_Walk.png");
-    manager.insert("C_Walk", LoadAsset(Img, 12, 3, 1.5f));
+    manager.insert("C_Walk", LoadAsset(Img, 12, 2, 1.5f));
 
     Img = LoadImage("assets/sprites/character/C_MoveSet_Base/C_Walk_UP/C_WalkUP.png");
-    manager.insert("C_WalkUP", LoadAsset(Img, 8, 3, 1.5f));
+    manager.insert("C_WalkUP", LoadAsset(Img, 8, 2, 1.5f));
 
     Img = LoadImage("assets/sprites/character/C_MoveSet_Base/C_Walk_Down/C_WalkDown.png");
-    manager.insert("C_WalkDown", LoadAsset(Img, 8, 3, 1.5f));
+    manager.insert("C_WalkDown", LoadAsset(Img, 8, 2, 1.5f));
 
     Img = LoadImage("assets/sprites/character/C_MoveSet_Base/C_De_Pie/C_De_Pie.png");
-    manager.insert("C_Standing", LoadAsset(Img, 7, 9, 1.5f));
+    manager.insert("C_Standing", LoadAsset(Img, 7, 7, 1.5f));
 
     Img = LoadImage("assets/sprites/character/C_MoveSet_Base/C_Punch/C_Punch.png");
     manager.insert("C_Punch", LoadAsset(Img, 10, 1, 1.5f));

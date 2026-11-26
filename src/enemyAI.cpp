@@ -71,174 +71,93 @@ MTreeNode<DecisionKey>* EnemyAI::BuildDecisionTree(Difficulty diff) {
 
 MTreeNode<DecisionKey>* EnemyAI::BuildEasyTree() {
     const float atkRange = attackRange;
+    const float dashThreshold = alertRange; // 300.0f
 
-    // Si está cerca: ~80% ataca, ~20% hace un BackWard de amague/deslizamiento
-    auto* closeMixCond = new MTreeNode<DecisionKey>(
-        DecisionKey([](Vector2, Vector2, bool, int) {
-            return (std::rand() % 100) < 20;
+    // Si supera los 300 px y no está en rango de ataque, hace DASH_FORWARD; si no, APPROACH normal
+    auto* farDashCond = new MTreeNode<DecisionKey>(
+        DecisionKey([dashThreshold](Vector2 pos, Vector2 targetPos, bool, int) {
+            return DistanceBetween(pos, targetPos) > dashThreshold;
         })
     );
-    closeMixCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT)));
-    closeMixCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT)));
+    farDashCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD)));
+    farDashCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH)));
 
-    // Raíz: ¿Está a rango de ataque? Si no, se acerca caminando
+    // Raíz: si está en rango de ataque golpea, si no se acerca
     auto* root = new MTreeNode<DecisionKey>(
         DecisionKey([atkRange](Vector2 pos, Vector2 targetPos, bool, int) {
             return DistanceBetween(pos, targetPos) <= atkRange;
         })
     );
-    root->append_child(closeMixCond);
-    root->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH)));
+    root->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT)));
+    root->append_child(farDashCond);
 
     return root;
 }
 
 MTreeNode<DecisionKey>* EnemyAI::BuildMediumTree() {
     const float atkRange = attackRange;
-    const float alertDist = alertRange;
+    const float dashThreshold = alertRange; // 450.0f
 
-    // 1. A corta distancia: ~65% ataca, ~35% retrocede con BackWard
-    auto* closeProbCond = new MTreeNode<DecisionKey>(
+    // Cerca: 65% ataca, 35% hace RETREAT (amague / retroceso)
+    auto* closeMixCond = new MTreeNode<DecisionKey>(
         DecisionKey([](Vector2, Vector2, bool, int) {
             return (std::rand() % 100) < 65;
         })
     );
-    closeProbCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT)));
-    closeProbCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT)));
+    closeMixCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT)));
+    closeMixCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT)));
 
-    // 2. A larga distancia (> alertDist): ~35% DASH_FORWARD, ~65% APPROACH
-    auto* farProbCond = new MTreeNode<DecisionKey>(
-        DecisionKey([](Vector2, Vector2, bool, int) {
-            return (std::rand() % 100) < 35;
+    // A partir de 450 px: DASH_FORWARD; entre atkRange y 450 px: APPROACH
+    auto* farDashCond = new MTreeNode<DecisionKey>(
+        DecisionKey([dashThreshold](Vector2 pos, Vector2 targetPos, bool, int) {
+            return DistanceBetween(pos, targetPos) > dashThreshold;
         })
     );
-    farProbCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD)));
-    farProbCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH)));
+    farDashCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD)));
+    farDashCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH)));
 
-    // 3. Rango medio vs lejano
-    auto* alertRangeCond = new MTreeNode<DecisionKey>(
-        DecisionKey([alertDist](Vector2 pos, Vector2 targetPos, bool, int) {
-            return DistanceBetween(pos, targetPos) <= alertDist;
-        })
-    );
-    alertRangeCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH)));
-    alertRangeCond->append_child(farProbCond);
-
-    // 4. ¿Está a rango cuerpo a cuerpo?
-    auto* attackRangeCond = new MTreeNode<DecisionKey>(
+    // Raíz: rango cercano vs acercamiento/dash
+    auto* root = new MTreeNode<DecisionKey>(
         DecisionKey([atkRange](Vector2 pos, Vector2 targetPos, bool, int) {
             return DistanceBetween(pos, targetPos) <= atkRange;
         })
     );
-    attackRangeCond->append_child(closeProbCond);
-    attackRangeCond->append_child(alertRangeCond);
-
-    // 5. Retroceso por presión de ataques del jugador
-    auto* pressureRetreatCond = new MTreeNode<DecisionKey>(
-        DecisionKey([](Vector2, Vector2, bool, int atkCount) {
-            return atkCount >= 3;
-        })
-    );
-    pressureRetreatCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT)));
-    pressureRetreatCond->append_child(attackRangeCond);
-
-    // 6. Raíz: ¿El jugador está atacando muy cerca?
-    auto* root = new MTreeNode<DecisionKey>(
-        DecisionKey([atkRange](Vector2 pos, Vector2 targetPos, bool isTargetAttacking, int) {
-            return isTargetAttacking && DistanceBetween(pos, targetPos) <= atkRange * 1.25f;
-        })
-    );
-    root->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::BLOCK)));
-    root->append_child(pressureRetreatCond);
+    root->append_child(closeMixCond);
+    root->append_child(farDashCond);
 
     return root;
 }
 
 MTreeNode<DecisionKey>* EnemyAI::BuildHardTree() {
     const float atkRange = attackRange;
-    const float closeTacticalDist = 175.0f;
-    const float wideRetreatDist = 600.0f;
+    const float dashThreshold = alertRange; // 600.0f
 
-    // 1. Elección de golpe en rango cercano: alterna ataque pesado y ligero
-    auto* attackTypeCond = new MTreeNode<DecisionKey>(
-        DecisionKey([](Vector2, Vector2, bool, int) {
-            return (std::rand() % 100) < 40;
-        })
-    );
-    attackTypeCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_HEAVY)));
-    attackTypeCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT)));
-
-    // 2. Mezcla táctica cercana (~50% RETREAT / ~50% atacar si está en rango, o acercarse si está al borde)
-    auto* inStrikeRangeCond = new MTreeNode<DecisionKey>(
-        DecisionKey([atkRange](Vector2 pos, Vector2 targetPos, bool, int) {
-            return DistanceBetween(pos, targetPos) <= atkRange;
-        })
-    );
-    inStrikeRangeCond->append_child(attackTypeCond);
-    inStrikeRangeCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH)));
-
+    // Cerca: 50% ataca, 50% hace RETREAT (amague / retroceso)
     auto* closeMixCond = new MTreeNode<DecisionKey>(
         DecisionKey([](Vector2, Vector2, bool, int) {
             return (std::rand() % 100) < 50;
         })
     );
+    closeMixCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT)));
     closeMixCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT)));
-    closeMixCond->append_child(inStrikeRangeCond);
 
-    // 3. Persecución / movimiento a media-larga distancia: DASH_FORWARD, RETREAT (incluso a ~600px) o APPROACH
-    auto* farDashOrRetreatCond = new MTreeNode<DecisionKey>(
-        DecisionKey([](Vector2, Vector2, bool, int) {
-            int roll = std::rand() % 100;
-            if (roll < 55) return true; // DASH_FORWARD
-            return false;
+    // A partir de 600 px: DASH_FORWARD; entre atkRange y 600 px: APPROACH
+    auto* farDashCond = new MTreeNode<DecisionKey>(
+        DecisionKey([dashThreshold](Vector2 pos, Vector2 targetPos, bool, int) {
+            return DistanceBetween(pos, targetPos) > dashThreshold;
         })
     );
+    farDashCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD)));
+    farDashCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH)));
 
-    auto* farRetreatOrApproachCond = new MTreeNode<DecisionKey>(
-        DecisionKey([](Vector2, Vector2, bool, int) {
-            return (std::rand() % 100) < 45; // RETREAT deslizante a distancia amplia
-        })
-    );
-    farRetreatOrApproachCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT)));
-    farRetreatOrApproachCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH)));
-
-    farDashOrRetreatCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD)));
-    farDashOrRetreatCond->append_child(farRetreatOrApproachCond);
-
-    // 4. ¿Está en zona táctica cercana o dentro del rango amplio de presión (~600px)?
-    auto* closeZoneCond = new MTreeNode<DecisionKey>(
-        DecisionKey([closeTacticalDist](Vector2 pos, Vector2 targetPos, bool, int) {
-            return DistanceBetween(pos, targetPos) <= closeTacticalDist;
-        })
-    );
-    closeZoneCond->append_child(closeMixCond);
-    closeZoneCond->append_child(farDashOrRetreatCond);
-
-    auto* withinWidePressureCond = new MTreeNode<DecisionKey>(
-        DecisionKey([wideRetreatDist](Vector2 pos, Vector2 targetPos, bool, int) {
-            return DistanceBetween(pos, targetPos) <= wideRetreatDist;
-        })
-    );
-    withinWidePressureCond->append_child(closeZoneCond);
-    withinWidePressureCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD)));
-
-    // 5. Presión por ataques del rival
-    auto* pressureCond = new MTreeNode<DecisionKey>(
-        DecisionKey([](Vector2, Vector2, bool, int atkCount) {
-            return atkCount >= 2;
-        })
-    );
-    pressureCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT)));
-    pressureCond->append_child(withinWidePressureCond);
-
-    // 6. Raíz: reacción si el jugador ataca cerca
+    // Raíz: rango cercano vs acercamiento/dash
     auto* root = new MTreeNode<DecisionKey>(
-        DecisionKey([atkRange](Vector2 pos, Vector2 targetPos, bool isTargetAttacking, int) {
-            return isTargetAttacking && DistanceBetween(pos, targetPos) <= atkRange * 1.35f;
+        DecisionKey([atkRange](Vector2 pos, Vector2 targetPos, bool, int) {
+            return DistanceBetween(pos, targetPos) <= atkRange;
         })
     );
-    root->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::BLOCK)));
-    root->append_child(pressureCond);
+    root->append_child(closeMixCond);
+    root->append_child(farDashCond);
 
     return root;
 }
@@ -374,8 +293,8 @@ void EnemyAI::RunMove(Move* targetMove, float dx, float dy) {
     if (anim1 == nullptr) return;
 
     if (current != targetMove) {
-        cpuCombat.ExecuteMove(depthSwapStart, depthSwapEnd, flipX, rotation, true);
         cpuCombat.SetCurrentMove(targetMove);
+        cpuCombat.ExecuteMove(depthSwapStart, depthSwapEnd, flipX, rotation, true);
     }
 
     if (!cpuCombat.ValidateMove()) return;
@@ -422,17 +341,28 @@ void EnemyAI::ExecuteAction(AIAction action, Vector2 targetPos, int screenWidth,
             StandIdle(screenWidth, screenHeight);
             break;
 
-        case AIAction::APPROACH:
-            // Se mantiene APPROACH mientras dure el intervalo para que el caminado sea fluido
-            if (std::fabs(dy) > std::fabs(dx)) {
-                if (dy < 0.0f) MoveUp(screenWidth, screenHeight);
-                else MoveDown(screenWidth, screenHeight);
+        case AIAction::APPROACH: {
+            const float deadZone = 5.0f;
+            float vx = (std::fabs(dx) > deadZone) ? (dirX * speed.x) : 0.0f;
+            float vy = (std::fabs(dy) > deadZone) ? (dirY * speed.y) : 0.0f;
+
+            if (std::fabs(vx) <= 0.01f && std::fabs(vy) <= 0.01f) {
+                StandIdle(screenWidth, screenHeight);
+                break;
+            }
+
+            if (std::fabs(vx) > 0.01f) {
+                // En diagonal o movimiento horizontal usa la caminata horizontal según X
+                flipX = (vx < 0.0f);
+                RunMove(moveSet.Walk, vx, vy);
+                ClampToScreen(screenWidth, screenHeight);
+            } else if (vy < 0.0f) {
+                MoveUp(screenWidth, screenHeight);
             } else {
-                if (dx < 0.0f) MoveLeft(screenWidth, screenHeight);
-                else if (dx > 0.0f) MoveRight(screenWidth, screenHeight);
-                else StandIdle(screenWidth, screenHeight);
+                MoveDown(screenWidth, screenHeight);
             }
             break;
+        }
 
         case AIAction::DASH_FORWARD:
             DashBackward(dirX, dirY, screenWidth, screenHeight);

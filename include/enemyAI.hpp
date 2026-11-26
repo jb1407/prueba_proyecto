@@ -62,6 +62,7 @@ private:
     const int maxConsecutiveAttacks = 2;
     bool pendingPostAttackRetreat = false;
     float forwardDashTimer;
+    float forwardDashDirX;
 
     MoveSetData moveSetData;
     MoveSetBase moveSet;

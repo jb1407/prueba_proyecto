@@ -43,7 +43,7 @@ EnemyAI::EnemyAI(float startX, float startY, AssetManager& assets, Difficulty di
             speed = {6.0f, 6.0f};
             dashSpeed = {10.0f, 10.0f};
             decisionInterval = 0.15f;
-            attackRange = 115.0f;
+            attackRange = 200.0f;
             alertRange = 650.0f;
             break;
     }
@@ -53,6 +53,7 @@ EnemyAI::EnemyAI(float startX, float startY, AssetManager& assets, Difficulty di
     consecutiveAttacks = 0;
     pendingPostAttackRetreat = false;
     forwardDashTimer = 0.0f;
+    forwardDashDirX = 0.0f;
 
     CPUPosition = {startX, startY};
     position = CPUPosition;
@@ -196,20 +197,20 @@ MTreeNode<DecisionKey>* EnemyAI::BuildHardTree() {
     nodeAttackChoice->append_child(leafAttackLight);
     leafAttackLight->add_right_sibling(leafAttackHeavy);
 
-    // 2. En rango de ataque: 60% golpea, 40% hace amague hacia adelante con DASH_FORWARD
+    // 2. En rango de ataque: 50% golpea, 50% desliza hacia adelante con DASH_FORWARD (sin forzar retroceso)
     auto* nodeCloseMix = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2, Vector2, bool, int) {
-            return (std::rand() % 100) < 60;
+            return (std::rand() % 100) < 50;
         }
     ));
-    auto* leafFeintDashForward = new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD));
+    auto* leafDashForwardClose = new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD));
     nodeCloseMix->append_child(nodeAttackChoice);
-    nodeAttackChoice->add_right_sibling(leafFeintDashForward);
+    nodeAttackChoice->add_right_sibling(leafDashForwardClose);
 
     // 3. Fuera de rango de ataque: 50% DASH_FORWARD, 50% APPROACH si está dentro de alertRange
     auto* nodeFarCoin = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2, Vector2, bool, int) {
-            return (std::rand() % 100) < 50;
+            return (std::rand() % 100) < 80;
         }
     ));
     auto* leafDashCoin     = new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD));
@@ -278,15 +279,7 @@ void EnemyAI::HandlePostAttack(int screenWidth, int screenHeight) {
     float dirY = (dist > 0.0001f) ? (dy / dist) : 0.0f;
 
     if (currentDifficulty == Difficulty::HARD) {
-        if (consecutiveAttacks >= maxConsecutiveAttacks) {
-            consecutiveAttacks = 0;
-            pendingPostAttackRetreat = false;
-            currentAction = AIAction::IDLE;
-            decisionTimer = 0.0f;
-            DashBackward(dirX, dirY, screenWidth, screenHeight);
-            return;
-        }
-
+        consecutiveAttacks = 0;
         pendingPostAttackRetreat = false;
         currentAction = AIAction::IDLE;
         decisionTimer = 0.0f;
@@ -426,11 +419,13 @@ void EnemyAI::ExecuteAction(AIAction action, Vector2 targetPos, int screenWidth,
     switch (action) {
         case AIAction::IDLE:
             forwardDashTimer = 0.0f;
+            forwardDashDirX = 0.0f;
             StandIdle(screenWidth, screenHeight);
             break;
 
         case AIAction::APPROACH: {
             forwardDashTimer = 0.0f;
+            forwardDashDirX = 0.0f;
             if (dist > 0.0001f) {
                 if (std::fabs(dx) > 0.5f) {
                     flipX = (targetPos.x < CPUPosition.x);
@@ -451,38 +446,41 @@ void EnemyAI::ExecuteAction(AIAction action, Vector2 targetPos, int screenWidth,
         }
 
         case AIAction::DASH_FORWARD: {
-            if (forwardDashTimer <= 0.0f) {
-                forwardDashTimer = 0.28f;
-            }
-            forwardDashTimer -= GetFrameTime();
-
-            if (dist > 0.0001f) {
-                if (std::fabs(dx) > 0.5f) {
-                    flipX = (targetPos.x < CPUPosition.x);
-                }
-
-                float vx = dirX * dashSpeed.x;
-                float vy = dirY * dashSpeed.y;
-
-                if (std::fabs(vx) > std::fabs(dx)) vx = dx;
-                if (std::fabs(vy) > std::fabs(dy)) vy = dy;
-
-                RunMove(moveSet.BackWard, vx, vy);
-                ClampToScreen(screenWidth, screenHeight);
+        if (forwardDashTimer <= 0.0f) {
+            forwardDashTimer = 0.40f;
+            if (std::fabs(dx) > 0.5f) {
+                forwardDashDirX = (dx > 0.0f) ? 1.0f : -1.0f;
             } else {
-                forwardDashTimer = 0.0f;
-                StandIdle(screenWidth, screenHeight);
+                forwardDashDirX = flipX ? -1.0f : 1.0f;
             }
+        }
+        forwardDashTimer -= GetFrameTime();
 
-            if (forwardDashTimer <= 0.0f || dist <= attackRange) {
-                forwardDashTimer = 0.0f;
-                decisionTimer = 0.0f;
-            }
-            break;
+        if (std::fabs(forwardDashDirX) > 0.0001f) {
+            flipX = (forwardDashDirX < 0.0f);
+
+            float vx = forwardDashDirX * dashSpeed.x;
+            float vy = dirY * dashSpeed.y * 0.5f;
+
+            RunMove(moveSet.BackWard, vx, vy);
+            ClampToScreen(screenWidth, screenHeight);
+        } else {
+            forwardDashTimer = 0.0f;
+            StandIdle(screenWidth, screenHeight);
+        }
+
+        if (forwardDashTimer <= 0.0f) {
+            forwardDashTimer = 0.0f;
+            forwardDashDirX = 0.0f;
+            FaceTarget(targetPos);
+            decisionTimer = 0.0f;
+        }
+        break;
         }
 
         case AIAction::RETREAT:
             forwardDashTimer = 0.0f;
+            forwardDashDirX = 0.0f;
             pendingPostAttackRetreat = false;
             consecutiveAttacks = 0;
 
@@ -493,6 +491,7 @@ void EnemyAI::ExecuteAction(AIAction action, Vector2 targetPos, int screenWidth,
         case AIAction::ATTACK_LIGHT:
         case AIAction::ATTACK_HEAVY: {
             forwardDashTimer = 0.0f;
+            forwardDashDirX = 0.0f;
             if (consecutiveAttacks < maxConsecutiveAttacks) {
                 consecutiveAttacks++;
             }
@@ -529,6 +528,7 @@ void EnemyAI::ExecuteAction(AIAction action, Vector2 targetPos, int screenWidth,
 
         case AIAction::BLOCK:
             forwardDashTimer = 0.0f;
+            forwardDashDirX = 0.0f;
             FaceTarget(targetPos);
             StandIdle(screenWidth, screenHeight);
             currentAction = AIAction::IDLE;

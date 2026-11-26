@@ -19,8 +19,8 @@ const char* ActionToString(AIAction action) {
 
 int main()
 {
-    const int screenWidth = 1280;
-    const int screenHeight = 720;
+    const int screenWidth = 1600;
+    const int screenHeight = 900;
 
     InitWindow(screenWidth, screenHeight, "Test CombatSystem + EnemyAI"); // Debe ir antes de cargar texturas y antes de destruir AssetManager
     SetTargetFPS(60);

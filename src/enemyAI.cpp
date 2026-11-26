@@ -36,24 +36,19 @@ MTreeNode<DecisionKey>* EnemyAI::BuildDecisionTree() {
     const float atkRange = attackRange;
     const float alertDist = alertRange;
 
-    auto patternStep = std::make_shared<int>(0);
+    // Contador dedicado únicamente a alternar deslizamientos/amagues y tipos de golpe
+    auto feintCounter = std::make_shared<int>(0);
+    auto attackCounter = std::make_shared<int>(0);
 
-    // 1. Raíz: ¿El objetivo está atacando y está muy cerca?
+    // 1. Raíz: ¿El objetivo está atacando y está cerca?
     auto* root = new MTreeNode<DecisionKey>(
         DecisionKey([atkRange](Vector2 pos, Vector2 targetPos, bool isTargetAttacking) {
-            return isTargetAttacking && DistanceBetween(pos, targetPos) <= atkRange * 1.15f;
+            return isTargetAttacking && DistanceBetween(pos, targetPos) <= atkRange * 1.25f;
         })
     );
 
-    // Rama TRUE: en 2 de cada 3 ocasiones retrocede deslizándose; en 1 de cada 3 bloquea/aguanta
-    auto* evadeOrBlockCond = new MTreeNode<DecisionKey>(
-        DecisionKey([patternStep](Vector2, Vector2, bool) {
-            int step = ++(*patternStep);
-            return (step % 3) != 0;
-        })
-    );
-    evadeOrBlockCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT)));
-    evadeOrBlockCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::BLOCK)));
+    // Rama TRUE: retrocede deslizándose para esquivar/reposicionarse
+    auto* retreatOnThreatNode = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
 
     // Rama FALSE: ¿Está dentro del rango de ataque?
     auto* inAttackRangeNode = new MTreeNode<DecisionKey>(
@@ -62,26 +57,26 @@ MTreeNode<DecisionKey>* EnemyAI::BuildDecisionTree() {
         })
     );
 
-    // Dentro de rango de ataque: 1 de cada 6 veces hace un deslizamiento corto para confundir, el resto ataca
-    auto* baitOrAttackCond = new MTreeNode<DecisionKey>(
-        DecisionKey([patternStep](Vector2, Vector2, bool) {
-            int step = ++(*patternStep);
-            return (step % 6) == 0;
+    // En rango de ataque: cada 5 evaluaciones hace un deslizamiento hacia atrás para confundir
+    auto* closeBaitCond = new MTreeNode<DecisionKey>(
+        DecisionKey([feintCounter](Vector2, Vector2, bool) {
+            int n = ++(*feintCounter);
+            return (n % 5) == 0;
         })
     );
-    baitOrAttackCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT)));
+    closeBaitCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT)));
 
-    // Alternar ataque pesado y ligero en rango de ataque
-    auto* heavyAttackCond = new MTreeNode<DecisionKey>(
-        DecisionKey([patternStep](Vector2, Vector2, bool) {
-            int step = ++(*patternStep);
-            return (step % 3) == 0;
+    // Si no amaga, alterna entre ATTACK_HEAVY y ATTACK_LIGHT
+    auto* heavyOrLightCond = new MTreeNode<DecisionKey>(
+        DecisionKey([attackCounter](Vector2, Vector2, bool) {
+            int n = ++(*attackCounter);
+            return (n % 3) == 0;
         })
     );
-    heavyAttackCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_HEAVY)));
-    heavyAttackCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT)));
+    heavyOrLightCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_HEAVY)));
+    heavyOrLightCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT)));
 
-    baitOrAttackCond->append_child(heavyAttackCond);
+    closeBaitCond->append_child(heavyOrLightCond);
 
     // Fuera de rango de ataque: ¿Está dentro del rango de alerta?
     auto* inAlertRangeNode = new MTreeNode<DecisionKey>(
@@ -90,26 +85,26 @@ MTreeNode<DecisionKey>* EnemyAI::BuildDecisionTree() {
         })
     );
 
-    // En rango medio: 1 de cada 8 veces hace un deslizamiento táctico, el resto se acerca (APPROACH)
-    auto* midRangeRepositionCond = new MTreeNode<DecisionKey>(
-        DecisionKey([patternStep](Vector2, Vector2, bool) {
-            int step = ++(*patternStep);
-            return (step % 8) == 0;
+    // En rango medio: cada 7 evaluaciones hace un pequeño deslizamiento de reposicionamiento, el resto camina (APPROACH)
+    auto* midRepositionCond = new MTreeNode<DecisionKey>(
+        DecisionKey([feintCounter](Vector2, Vector2, bool) {
+            int n = ++(*feintCounter);
+            return (n % 7) == 0;
         })
     );
-    midRangeRepositionCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT)));
-    midRangeRepositionCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH)));
+    midRepositionCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT)));
+    midRepositionCond->append_child(new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH)));
 
-    // Lejos (> alertDist): avanzar con DASH_FORWARD
+    // Lejos (> alertDist): avanzar rápido hacia el objetivo
     auto* dashForwardNode = new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD));
 
-    inAlertRangeNode->append_child(midRangeRepositionCond);
+    inAlertRangeNode->append_child(midRepositionCond);
     inAlertRangeNode->append_child(dashForwardNode);
 
-    inAttackRangeNode->append_child(baitOrAttackCond);
+    inAttackRangeNode->append_child(closeBaitCond);
     inAttackRangeNode->append_child(inAlertRangeNode);
 
-    root->append_child(evadeOrBlockCond);
+    root->append_child(retreatOnThreatNode);
     root->append_child(inAttackRangeNode);
 
     return root;
@@ -227,6 +222,7 @@ void EnemyAI::ExecuteAction(AIAction action, Vector2 targetPos, int screenWidth,
             break;
 
         case AIAction::APPROACH:
+            // Se mantiene APPROACH mientras dure el intervalo para que el caminado sea fluido
             if (std::fabs(dy) > std::fabs(dx)) {
                 if (dy < 0.0f) MoveUp(screenWidth, screenHeight);
                 else MoveDown(screenWidth, screenHeight);
@@ -235,7 +231,6 @@ void EnemyAI::ExecuteAction(AIAction action, Vector2 targetPos, int screenWidth,
                 else if (dx > 0.0f) MoveRight(screenWidth, screenHeight);
                 else StandIdle(screenWidth, screenHeight);
             }
-            currentAction = AIAction::IDLE;
             break;
 
         case AIAction::DASH_FORWARD:
@@ -258,7 +253,6 @@ void EnemyAI::ExecuteAction(AIAction action, Vector2 targetPos, int screenWidth,
         case AIAction::BLOCK:
             FaceTarget(targetPos);
             StandIdle(screenWidth, screenHeight);
-            currentAction = AIAction::IDLE;
             break;
     }
 }

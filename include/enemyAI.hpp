@@ -4,7 +4,7 @@
 #include <raylib.h>
 #include <functional>
 #include "mtreenode.hpp"
-#include "Mechanics.hpp"
+#include "LoadAssets.hpp"
 #include "hitbox.hpp"
 #include "Weapon.hpp"
 
@@ -19,7 +19,7 @@ enum class Difficulty {
 enum class AIAction {
     IDLE,
     APPROACH,
-    DASH_FORWARD, // Impulso rápido hacia el jugador para cerrar distancia
+    DASH_FORWARD,
     RETREAT,
     ATTACK_LIGHT,
     ATTACK_HEAVY,
@@ -36,8 +36,10 @@ struct DecisionKey {
     AIAction action;
     std::function<bool(Vector2 pos, Vector2 playerPos, bool isAttacking, int atkCount)> condition;
 
-    DecisionKey(AIAction act) : type(NodeType::ACTION), action(act) {}
-    DecisionKey(std::function<bool(Vector2, Vector2, bool, int)> cond) 
+    DecisionKey(AIAction act)
+        : type(NodeType::ACTION), action(act), condition(nullptr) {}
+
+    DecisionKey(std::function<bool(Vector2, Vector2, bool, int)> cond)
         : type(NodeType::CONDITION), action(AIAction::IDLE), condition(cond) {}
 };
 
@@ -48,83 +50,67 @@ private:
     Vector2 speed;
     Vector2 size;
     Vector2 moveDir;
-    
+
     float health;
     float maxHealth;
     float damageMultiplier;
+
     AIAction currentAction;
-    
     float attackRange;
     float alertRange;
+
+    float reactionTimer;
+    float reactionDelay;
+    float actionDurationTimer;
+
     int playerAttackCounter;
     Difficulty currentDifficulty;
 
-    float reactionTimer = 0.0f;
-    float reactionDelay = 0.2f;
-    float actionDurationTimer = 0.0f; // Bloquea el cambio de decisión durante amagues o dashes
-
-    // Cajas de colisión del Enemigo
     Hitbox hurtbox;
     Hitbox attackHitbox;
 
-    WeaponType equippedWeapon = WeaponType::NONE;
-    float weaponDurationTimer = 0.0f;
+    WeaponType equippedWeapon;
+    float weaponDuration;
+    bool hasWeapon;
 
     MTreeNode<DecisionKey>* decisionTreeRoot;
 
     MTreeNode<DecisionKey>* BuildEasyTree();
     MTreeNode<DecisionKey>* BuildMediumTree();
     MTreeNode<DecisionKey>* BuildHardTree();
+    MTreeNode<DecisionKey>* BuildDecisionTree(Difficulty diff);
 
-    MTreeNode<DecisionKey>* BuildDecisionTree(Difficulty diff = Difficulty::MEDIUM);
+    void UpdateHitboxes();
     void ClampToScreen(int screenWidth, int screenHeight);
 
 public:
-    EnemyAI(float startX, float startY, Difficulty diff);
+    EnemyAI(float startX, float startY, Difficulty diff = Difficulty::MEDIUM);
     ~EnemyAI();
 
-    void Update(Vector2 playerPosition, bool isPlayerAttacking, int screenWidth, int screenHeight);
-    void Draw(AssetManager& manager, Vector2 playerPosition);
+    void Update(Vector2 playerPos, bool isPlayerAttacking, int screenWidth, int screenHeight);
+    void Draw(AssetManager& assets, Vector2 playerPos);
+
     void EvaluateTree(Vector2 playerPosition, bool isPlayerAttacking);
-    AIAction GetCurrentAction() const { return currentAction; }
-
-    Rectangle GetRectangle() const { 
-        return { position.x, position.y, size.x, size.y }; 
-    }
-    float GetAttackRange() const { return attackRange; }
-    float GetHealth() const { return health; }
-    float GetMaxHealth() const { return maxHealth; }
-
-    Hitbox& GetHurtbox() { return hurtbox; }
-    const Hitbox& GetAttackHitbox() const { return attackHitbox; }
+    void ExecuteAction(AIAction action, Vector2 playerPos, float dt);
 
     void TakeDamage(float amount);
-    bool IsDead() const { return health <= 0.0f; }
+    bool IsDead() const;
+
+    void EquipWeapon(WeaponType type, float duration);
+    void UpdateWeapon(float dt);
+    bool HasWeapon() const { return hasWeapon; }
+    WeaponType GetEquippedWeapon() const { return equippedWeapon; }
+
+    Rectangle GetRectangle() const { return { position.x, position.y, size.x, size.y }; }
+    Hitbox GetHurtbox() const { return hurtbox; }
+    Hitbox GetAttackHitbox() const { return attackHitbox; }
+
+    Vector2 GetPosition() const { return position; }
+    float GetHealth() const { return health; }
+    float GetMaxHealth() const { return maxHealth; }
     float GetDamageMultiplier() const { return damageMultiplier; }
-
-    void EquipWeapon(WeaponType type, float duration = 10.0f) {
-        equippedWeapon = type;
-        weaponDurationTimer = duration;
-        // Aquí en el futuro llamaremos a una función genérica: ApplyWeaponEffect();
-    }
-
-    bool HasWeapon() const {
-        return equippedWeapon != WeaponType::NONE;
-    }
-
-    WeaponType GetEquippedWeapon() const {
-        return equippedWeapon;
-    }
-
-    // Método para actualizar el estado del arma (desgaste, temporizador, etc.)
-    void UpdateWeapon(float dt) {
-        if (HasWeapon()) {
-            weaponDurationTimer -= dt;
-            if (weaponDurationTimer <= 0.0f) {
-                equippedWeapon = WeaponType::NONE; // Se acaba el efecto del arma
-            }
-        }
-    }
+    AIAction GetCurrentAction() const { return currentAction; }
+    Difficulty GetDifficulty() const { return currentDifficulty; }
 };
 
 #endif

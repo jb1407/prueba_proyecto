@@ -3,59 +3,57 @@
 #include <cstdlib>
 
 namespace {
-constexpr float MAX_VERTICAL_DIFF = 10.0f;
-
 float DistanceBetween(Vector2 a, Vector2 b) {
     float dx = b.x - a.x;
     float dy = b.y - a.y;
     return std::sqrt(dx * dx + dy * dy);
 }
 
-bool IsWithinAttackRange(Vector2 pos, Vector2 targetPos, float atkRange, float maxVerticalDiff) {
-    float vertDiff = std::fabs(targetPos.y - pos.y);
-    return (DistanceBetween(pos, targetPos) <= atkRange) && (vertDiff <= maxVerticalDiff);
+bool IsWithinAttackRange(Vector2 pos, Vector2 targetPos, float atkRange) {
+    return DistanceBetween(pos, targetPos) <= atkRange;
 }
 } // namespace
 
 EnemyAI::EnemyAI(float startX, float startY, AssetManager& assets, Difficulty diff) {
-    size = {115.0f, 200.0f};
+    size = { 115.0f, 200.0f };
     currentDifficulty = diff;
-    activeBackVel = {0.0f, 0.0f};
+    health = 100.0f;
+    maxHealth = 100.0f;
+    damageMultiplier = 1.0f;
 
     switch (currentDifficulty) {
         case Difficulty::EASY:
-            speed = {3.5f, 3.5f};
-            dashSpeed = {6.5f, 6.5f};
-            decisionInterval = 0.35f;
-            attackRange = 100.0f;
-            alertRange = 350.0f;
+            speed = { 3.0f, 3.0f };
+            reactionDelay = 0.35f;
+            attackRange = 50.0f;
+            alertRange = 300.0f;
+            damageMultiplier = 0.80f;
             break;
 
         case Difficulty::MEDIUM:
-            speed = {4.0f, 4.0f};
-            dashSpeed = {7.5f, 7.5f};
-            decisionInterval = 0.25f;
-            attackRange = 110.0f;
-            alertRange = 500.0f;
+            speed = { 4.0f, 4.0f };
+            reactionDelay = 0.25f;
+            attackRange = 60.0f;
+            alertRange = 450.0f;
+            damageMultiplier = 1.00f;
             break;
 
         case Difficulty::HARD:
-            speed = {6.0f, 6.0f};
-            dashSpeed = {10.0f, 10.0f};
-            decisionInterval = 0.15f;
-            attackRange = 200.0f;
-            alertRange = 650.0f;
+            speed = { 5.0f, 5.0f };
+            reactionDelay = 0.15f;
+            attackRange = 180.0f;
+            alertRange = 600.0f;
+            damageMultiplier = 1.25f;
             break;
     }
 
-    decisionTimer = 0.0f;
+    currentAction = AIAction::IDLE;
     playerAttackCounter = 0;
-    consecutiveAttacks = 0;
-    pendingPostAttackRetreat = false;
-    forwardDashTimer = 0.0f;
-    forwardDashDirX = 0.0f;
+    reactionTimer = 0.0f;
+    actionDurationTimer = 0.0f;
+    moveDir = { 0.0f, 0.0f };
 
-    CPUPosition = {startX, startY};
+    CPUPosition = { startX, startY };
     position = CPUPosition;
     lastTargetPos = CPUPosition;
 
@@ -79,173 +77,178 @@ MTreeNode<DecisionKey>* EnemyAI::BuildDecisionTree(Difficulty diff) {
 }
 
 MTreeNode<DecisionKey>* EnemyAI::BuildEasyTree() {
+    auto* leafAttack   = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT));
+    auto* leafIdle     = new MTreeNode<DecisionKey>(DecisionKey(AIAction::IDLE));
+    auto* leafApproach = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
+
     const float atkRange = attackRange;
-    const float dashThreshold = alertRange; // 350.0f
 
-    // 50% DASH_FORWARD, 50% APPROACH cuando está dentro de alertRange; si no, APPROACH
-    auto* nodeDashCoin = new MTreeNode<DecisionKey>(DecisionKey(
+    // 1. Dentro del rango: 65% ATTACK_LIGHT, 35% IDLE
+    auto* nodeCloseAttackChance = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2, Vector2, bool, int) {
-            return (std::rand() % 100) < 50;
+            return (std::rand() % 100) < 65;
         }
     ));
-    auto* leafDashCoin     = new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD));
-    auto* leafApproachCoin = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
-    nodeDashCoin->append_child(leafDashCoin);
-    leafDashCoin->add_right_sibling(leafApproachCoin);
+    nodeCloseAttackChance->append_child(leafAttack);
+    leafAttack->add_right_sibling(leafIdle);
 
-    auto* nodeFarDash = new MTreeNode<DecisionKey>(DecisionKey(
-        [dashThreshold](Vector2 pos, Vector2 targetPos, bool, int) {
-            return DistanceBetween(pos, targetPos) <= dashThreshold;
+    // 2. Fuera del rango: APPROACH
+    auto* nodeCheckRange = new MTreeNode<DecisionKey>(DecisionKey(
+        [atkRange](Vector2 pos, Vector2 pPos, bool, int) {
+            return IsWithinAttackRange(pos, pPos, atkRange);
         }
     ));
-    auto* leafApproachFar = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
-    nodeFarDash->append_child(nodeDashCoin);
-    nodeDashCoin->add_right_sibling(leafApproachFar);
+    nodeCheckRange->append_child(nodeCloseAttackChance);
+    nodeCloseAttackChance->add_right_sibling(leafApproach);
 
-    // Raíz: ¿Está a rango de ataque y dentro de la tolerancia vertical?
-    auto* leafAttack = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT));
-    auto* nodeCheckAttack = new MTreeNode<DecisionKey>(DecisionKey(
-        [atkRange](Vector2 pos, Vector2 targetPos, bool, int) {
-            return IsWithinAttackRange(pos, targetPos, atkRange, MAX_VERTICAL_DIFF);
-        }
-    ));
-    nodeCheckAttack->append_child(leafAttack);
-    leafAttack->add_right_sibling(nodeFarDash);
-
-    return nodeCheckAttack;
+    return nodeCheckRange;
 }
 
 MTreeNode<DecisionKey>* EnemyAI::BuildMediumTree() {
+    auto* leafRetreatClose    = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
+    auto* leafRetreatPressure = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
+    auto* leafAttackLight     = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT));
+    auto* leafAttackHeavy     = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_HEAVY));
+    auto* leafDashForward     = new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD));
+    auto* leafApproach        = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
+
     const float atkRange = attackRange;
-    const float dashThreshold = alertRange; // 500.0f
 
-    // 1. Corta distancia: 70% ataca, 30% retrocede (amague táctico)
-    auto* nodeCloseProb = new MTreeNode<DecisionKey>(DecisionKey(
+    // 1. Elección de ataque: 75% golpe ligero, 25% golpe pesado en rango
+    auto* nodeAttackChoice = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2, Vector2, bool, int) {
-            return (std::rand() % 100) < 70;
+            return (std::rand() % 100) < 75;
         }
     ));
-    auto* leafAttackClose = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT));
-    auto* leafRetreatClose = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
-    nodeCloseProb->append_child(leafAttackClose);
-    leafAttackClose->add_right_sibling(leafRetreatClose);
+    nodeAttackChoice->append_child(leafAttackLight);
+    leafAttackLight->add_right_sibling(leafAttackHeavy);
 
-    // 2. Distancia media/larga: 50% DASH_FORWARD, 50% APPROACH si está dentro de alertRange
-    auto* nodeFarDashThreshold = new MTreeNode<DecisionKey>(DecisionKey(
-        [dashThreshold](Vector2 pos, Vector2 targetPos, bool, int) {
-            return DistanceBetween(pos, targetPos) <= dashThreshold;
-        }
-    ));
-    auto* nodeFarProb = new MTreeNode<DecisionKey>(DecisionKey(
+    // 2. A corta distancia: 25% retrocede para dar aire, 75% ataca
+    auto* nodeCloseMix = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2, Vector2, bool, int) {
-            return (std::rand() % 100) < 50;
+            return (std::rand() % 100) < 25;
         }
     ));
-    auto* leafDashFar = new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD));
-    auto* leafApproachFar = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
-    nodeFarProb->append_child(leafDashFar);
-    leafDashFar->add_right_sibling(leafApproachFar);
+    nodeCloseMix->append_child(leafRetreatClose);
+    leafRetreatClose->add_right_sibling(nodeAttackChoice);
 
-    auto* leafApproachMid = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
-    nodeFarDashThreshold->append_child(nodeFarProb);
-    nodeFarProb->add_right_sibling(leafApproachMid);
-
-    // 3. ¿Está a rango cuerpo a cuerpo y dentro de la tolerancia vertical?
-    auto* nodeCheckDistance = new MTreeNode<DecisionKey>(DecisionKey(
-        [atkRange](Vector2 pos, Vector2 targetPos, bool, int) {
-            return IsWithinAttackRange(pos, targetPos, atkRange, MAX_VERTICAL_DIFF);
+    // 3. A mayor distancia: prioriza APPROACH (75%) sobre DASH_FORWARD (25%)
+    auto* nodeFarMovement = new MTreeNode<DecisionKey>(DecisionKey(
+        [](Vector2, Vector2, bool, int) {
+            return (std::rand() % 100) < 25;
         }
     ));
-    nodeCheckDistance->append_child(nodeCloseProb);
-    nodeCloseProb->add_right_sibling(nodeFarDashThreshold);
+    nodeFarMovement->append_child(leafDashForward);
+    leafDashForward->add_right_sibling(leafApproach);
 
-    // 4. Retroceso por presión del jugador
+    // 4. Rango cercano táctico
+    auto* nodeCloseRange = new MTreeNode<DecisionKey>(DecisionKey(
+        [atkRange](Vector2 pos, Vector2 pPos, bool, int) {
+            float closeLimit = (atkRange > 150.0f) ? atkRange : 150.0f;
+            return DistanceBetween(pos, pPos) <= closeLimit;
+        }
+    ));
+    nodeCloseRange->append_child(nodeCloseMix);
+    nodeCloseMix->add_right_sibling(nodeFarMovement);
+
+    // 5. Retroceso solo si encadenas varios ataques seguidos (atkCount >= 5)
+    auto* nodeCheckPressure = new MTreeNode<DecisionKey>(DecisionKey(
+        [](Vector2, Vector2, bool, int atkCount) {
+            return atkCount >= 5;
+        }
+    ));
+    nodeCheckPressure->append_child(leafRetreatPressure);
+    leafRetreatPressure->add_right_sibling(nodeCloseRange);
+
+    return nodeCheckPressure;
+}
+
+MTreeNode<DecisionKey>* EnemyAI::BuildHardTree() {
+    auto* leafBlock         = new MTreeNode<DecisionKey>(DecisionKey(AIAction::BLOCK));
+    auto* leafRetreat       = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
+    auto* leafRetreatGlobal = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
+    auto* leafAttackLight   = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT));
+    auto* leafAttackHeavy   = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_HEAVY));
+    auto* leafDashForward   = new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD));
+    auto* leafApproach      = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
+
+    const float atkRange = attackRange;
+
+    // 1. Elección de ataque (Ligero en rango corto, Pesado al límite)
+    auto* nodeAttackChoice = new MTreeNode<DecisionKey>(DecisionKey(
+        [atkRange](Vector2 pos, Vector2 pPos, bool, int) {
+            return IsWithinAttackRange(pos, pPos, atkRange);
+        }
+    ));
+    nodeAttackChoice->append_child(leafAttackLight);
+    leafAttackLight->add_right_sibling(leafAttackHeavy);
+
+    // 2. Probabilidad táctica a corta distancia: solo 10% RETREAT, 90% ataca
+    auto* nodeTacticalMix = new MTreeNode<DecisionKey>(DecisionKey(
+        [](Vector2, Vector2, bool, int) {
+            return (std::rand() % 100) < 10;
+        }
+    ));
+    nodeTacticalMix->append_child(leafRetreat);
+    leafRetreat->add_right_sibling(nodeAttackChoice);
+
+    // 3. Persecución (> 150px): 60% DASH_FORWARD, 40% APPROACH
+    auto* nodeFarAggression = new MTreeNode<DecisionKey>(DecisionKey(
+        [](Vector2, Vector2, bool, int) {
+            return (std::rand() % 100) < 60;
+        }
+    ));
+    nodeFarAggression->append_child(leafDashForward);
+    leafDashForward->add_right_sibling(leafApproach);
+
+    // 4. Rango táctico cercano (<= 150.0f)
+    auto* nodeCloseRange = new MTreeNode<DecisionKey>(DecisionKey(
+        [](Vector2 pos, Vector2 pPos, bool, int) {
+            return DistanceBetween(pos, pPos) <= 150.0f;
+        }
+    ));
+    nodeCloseRange->append_child(nodeTacticalMix);
+    nodeTacticalMix->add_right_sibling(nodeFarAggression);
+
+    // 5. Presión por ataques sostenidos del jugador (atkCount >= 4)
     auto* nodeCheckRetreat = new MTreeNode<DecisionKey>(DecisionKey(
         [](Vector2, Vector2, bool, int atkCount) {
-            return atkCount >= 3;
+            return atkCount >= 4;
         }
     ));
-    auto* leafRetreatPressure = new MTreeNode<DecisionKey>(DecisionKey(AIAction::RETREAT));
-    nodeCheckRetreat->append_child(leafRetreatPressure);
-    leafRetreatPressure->add_right_sibling(nodeCheckDistance);
+    nodeCheckRetreat->append_child(leafRetreatGlobal);
+    leafRetreatGlobal->add_right_sibling(nodeCloseRange);
 
-    // 5. Bloqueo defensivo cerca si el jugador ataca
+    // 6. Bloqueo defensivo solo si el jugador ataca cerca
     auto* nodeCheckBlock = new MTreeNode<DecisionKey>(DecisionKey(
-        [atkRange](Vector2 pos, Vector2 targetPos, bool attacking, int) {
-            return attacking && DistanceBetween(pos, targetPos) <= (atkRange * 1.3f);
+        [atkRange](Vector2 pos, Vector2 pPos, bool attacking, int) {
+            return attacking && DistanceBetween(pos, pPos) <= (atkRange * 1.25f);
         }
     ));
-    auto* leafBlock = new MTreeNode<DecisionKey>(DecisionKey(AIAction::BLOCK));
     nodeCheckBlock->append_child(leafBlock);
     leafBlock->add_right_sibling(nodeCheckRetreat);
 
     return nodeCheckBlock;
 }
 
-MTreeNode<DecisionKey>* EnemyAI::BuildHardTree() {
-    const float atkRange = attackRange;
-    const float dashThreshold = alertRange; // 650.0f en HARD
-
-    // 1. Elección de golpe en rango de ataque: ligero o pesado
-    auto* nodeAttackChoice = new MTreeNode<DecisionKey>(DecisionKey(
-        [atkRange](Vector2 pos, Vector2 targetPos, bool, int) {
-            return DistanceBetween(pos, targetPos) <= (atkRange * 0.75f);
+AIAction EnemyAI::EvaluateTree(Vector2 targetPos, bool isTargetAttacking) {
+    if (isTargetAttacking) {
+        playerAttackCounter++;
+    } else {
+        if (playerAttackCounter > 0) {
+            playerAttackCounter--;
         }
-    ));
-    auto* leafAttackLight = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_LIGHT));
-    auto* leafAttackHeavy = new MTreeNode<DecisionKey>(DecisionKey(AIAction::ATTACK_HEAVY));
-    nodeAttackChoice->append_child(leafAttackLight);
-    leafAttackLight->add_right_sibling(leafAttackHeavy);
+    }
 
-    // 2. En rango de ataque: 50% golpea, 50% desliza hacia adelante con DASH_FORWARD (sin forzar retroceso)
-    auto* nodeCloseMix = new MTreeNode<DecisionKey>(DecisionKey(
-        [](Vector2, Vector2, bool, int) {
-            return (std::rand() % 100) < 50;
-        }
-    ));
-    auto* leafDashForwardClose = new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD));
-    nodeCloseMix->append_child(nodeAttackChoice);
-    nodeAttackChoice->add_right_sibling(leafDashForwardClose);
-
-    // 3. Fuera de rango de ataque: 50% DASH_FORWARD, 50% APPROACH si está dentro de alertRange
-    auto* nodeFarCoin = new MTreeNode<DecisionKey>(DecisionKey(
-        [](Vector2, Vector2, bool, int) {
-            return (std::rand() % 100) < 80;
-        }
-    ));
-    auto* leafDashCoin     = new MTreeNode<DecisionKey>(DecisionKey(AIAction::DASH_FORWARD));
-    auto* leafApproachCoin = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
-    nodeFarCoin->append_child(leafDashCoin);
-    leafDashCoin->add_right_sibling(leafApproachCoin);
-
-    auto* nodeFarDash = new MTreeNode<DecisionKey>(DecisionKey(
-        [dashThreshold](Vector2 pos, Vector2 targetPos, bool, int) {
-            return DistanceBetween(pos, targetPos) <= dashThreshold;
-        }
-    ));
-    auto* leafApproachFar = new MTreeNode<DecisionKey>(DecisionKey(AIAction::APPROACH));
-    nodeFarDash->append_child(nodeFarCoin);
-    nodeFarCoin->add_right_sibling(leafApproachFar);
-
-    // 4. Raíz: ¿Está en rango de ataque y dentro de la tolerancia vertical?
-    auto* nodeCheckAttackRange = new MTreeNode<DecisionKey>(DecisionKey(
-        [atkRange](Vector2 pos, Vector2 targetPos, bool, int) {
-            return IsWithinAttackRange(pos, targetPos, atkRange, MAX_VERTICAL_DIFF);
-        }
-    ));
-    nodeCheckAttackRange->append_child(nodeCloseMix);
-    nodeCloseMix->add_right_sibling(nodeFarDash);
-
-    return nodeCheckAttackRange;
-}
-
-AIAction EnemyAI::EvaluateTree(Vector2 targetPos, bool isTargetAttacking) const {
     if (decisionTreeRoot == nullptr) {
         return AIAction::IDLE;
     }
 
     MTreeNode<DecisionKey>* current = decisionTreeRoot;
-    Vector2 currentPos = CPUPosition;
+    Vector2 currentPos = {
+        CPUPosition.x + size.x * 0.5f,
+        CPUPosition.y + size.y * 0.5f
+    };
 
     while (current != nullptr) {
         const DecisionKey& key = current->get_key();
@@ -271,83 +274,28 @@ AIAction EnemyAI::EvaluateTree(Vector2 targetPos, bool isTargetAttacking) const 
     return AIAction::IDLE;
 }
 
-void EnemyAI::HandlePostAttack(int screenWidth, int screenHeight) {
-    float dx = lastTargetPos.x - CPUPosition.x;
-    float dy = lastTargetPos.y - CPUPosition.y;
-    float dist = std::sqrt(dx * dx + dy * dy);
-    float dirX = (dist > 0.0001f) ? (dx / dist) : (flipX ? -1.0f : 1.0f);
-    float dirY = (dist > 0.0001f) ? (dy / dist) : 0.0f;
-
-    if (currentDifficulty == Difficulty::HARD) {
-        consecutiveAttacks = 0;
-        pendingPostAttackRetreat = false;
-        currentAction = AIAction::IDLE;
-        decisionTimer = 0.0f;
-        return;
-    }
-
-    if (consecutiveAttacks >= maxConsecutiveAttacks) {
-        consecutiveAttacks = 0;
-        pendingPostAttackRetreat = false;
-        currentAction = AIAction::IDLE;
-        decisionTimer = decisionInterval;
-        DashBackward(-dirX, -dirY, screenWidth, screenHeight);
-        return;
-    }
-
-    if (pendingPostAttackRetreat) {
-        consecutiveAttacks = 0;
-        pendingPostAttackRetreat = false;
-        currentAction = AIAction::IDLE;
-        decisionTimer = decisionInterval;
-        DashBackward(-dirX, -dirY, screenWidth, screenHeight);
-        return;
-    }
-
-    int secondHitChance = 0;
-    if (currentDifficulty == Difficulty::MEDIUM) secondHitChance = 25;
-
-    if (dist <= attackRange * 1.15f && (std::rand() % 100) < secondHitChance) {
-        pendingPostAttackRetreat = true;
-        currentAction = AIAction::IDLE;
-        decisionTimer = 0.05f;
-        if (std::fabs(dx) > 0.5f) {
-            flipX = (dx < 0.0f);
-        }
-        cpuCombat.SetCurrentMove(nullptr);
-        AttackPunch(screenWidth, screenHeight);
-        return;
-    }
-
-    decisionTimer = 0.0f;
-}
-
 void EnemyAI::Update(Vector2 targetPos, bool isTargetAttacking, int screenWidth, int screenHeight) {
+    float dt = GetFrameTime();
     lastTargetPos = targetPos;
 
-    if (isTargetAttacking) {
-        playerAttackCounter++;
-    } else if (playerAttackCounter > 0) {
-        playerAttackCounter--;
+    reactionTimer += dt;
+    if (actionDurationTimer > 0.0f) {
+        actionDurationTimer -= dt;
     }
 
-    if (isAttacking || isBacking) {
-        UpdateFrame(screenWidth, screenHeight);
-        return;
-    }
+    if (reactionTimer >= reactionDelay && actionDurationTimer <= 0.0f) {
+        currentAction = EvaluateTree(targetPos, isTargetAttacking);
+        reactionTimer = 0.0f;
 
-    if (forwardDashTimer > 0.0f) {
-        currentAction = AIAction::DASH_FORWARD;
-        decisionTimer = 0.0f;
-    } else {
-        decisionTimer -= GetFrameTime();
-        if (decisionTimer <= 0.0f) {
-            currentAction = EvaluateTree(targetPos, isTargetAttacking);
-            decisionTimer = decisionInterval;
+        if (currentAction == AIAction::RETREAT || currentAction == AIAction::BLOCK) {
+            currentAction = AIAction::RETREAT;
+            actionDurationTimer = 0.35f;
+        } else if (currentAction == AIAction::DASH_FORWARD) {
+            actionDurationTimer = 0.35f;
         }
     }
 
-    ExecuteAction(currentAction, targetPos, screenWidth, screenHeight);
+    ExecuteAction(currentAction, targetPos, dt, screenWidth, screenHeight);
 }
 
 void EnemyAI::ClampToScreen(int screenWidth, int screenHeight) {
@@ -360,7 +308,6 @@ void EnemyAI::ClampToScreen(int screenWidth, int screenHeight) {
 }
 
 void EnemyAI::FaceTarget(Vector2 targetPos) {
-    if (isAttacking || isBacking) return;
     if (targetPos.x < CPUPosition.x - 0.5f) flipX = true;
     else if (targetPos.x > CPUPosition.x + 0.5f) flipX = false;
 }
@@ -389,237 +336,104 @@ void EnemyAI::RunMove(Move* targetMove, float dx, float dy) {
 
     if (finishedAnim) {
         cpuCombat.ExecuteMove(depthSwapStart, depthSwapEnd, flipX, rotation, true);
-
-        if (isAttacking) {
-            isAttacking = false;
-            HandlePostAttack(GetScreenWidth(), GetScreenHeight());
-            return;
-        }
-
-        if (isBacking) {
-            isBacking = false;
-            activeBackVel = {0.0f, 0.0f};
-            decisionTimer = 0.0f;
-        }
     }
 }
 
-void EnemyAI::ExecuteAction(AIAction action, Vector2 targetPos, int screenWidth, int screenHeight) {
-    if (isAttacking || isBacking) {
-        UpdateFrame(screenWidth, screenHeight);
-        return;
-    }
-
-    float dx = targetPos.x - CPUPosition.x;
-    float dy = targetPos.y - CPUPosition.y;
+void EnemyAI::ExecuteAction(AIAction action, Vector2 targetPos, float dt, int screenWidth, int screenHeight) {
+    Vector2 enemyCenter = {
+        CPUPosition.x + size.x * 0.5f,
+        CPUPosition.y + size.y * 0.5f
+    };
+    float dx = targetPos.x - enemyCenter.x;
+    float dy = targetPos.y - enemyCenter.y;
     float dist = std::sqrt(dx * dx + dy * dy);
-    float dirX = (dist > 0.0001f) ? (dx / dist) : 0.0f;
-    float dirY = (dist > 0.0001f) ? (dy / dist) : 0.0f;
 
     switch (action) {
-        case AIAction::IDLE:
-            forwardDashTimer = 0.0f;
-            forwardDashDirX = 0.0f;
-            StandIdle(screenWidth, screenHeight);
-            break;
-
         case AIAction::APPROACH: {
-            forwardDashTimer = 0.0f;
-            forwardDashDirX = 0.0f;
             if (dist > 0.0001f) {
+                moveDir = { dx / dist, dy / dist };
                 if (std::fabs(dx) > 0.5f) {
-                    flipX = (targetPos.x < CPUPosition.x);
+                    flipX = (targetPos.x < enemyCenter.x);
                 }
-
-                float vx = dirX * speed.x;
-                float vy = dirY * speed.y;
-
-                if (std::fabs(vx) > std::fabs(dx)) vx = dx;
-                if (std::fabs(vy) > std::fabs(dy)) vy = dy;
-
+                float vx = moveDir.x * speed.x;
+                float vy = moveDir.y * speed.y;
                 RunMove(moveSet.Walk, vx, vy);
-                ClampToScreen(screenWidth, screenHeight);
             } else {
-                StandIdle(screenWidth, screenHeight);
+                moveDir = { 0.0f, 0.0f };
+                RunMove(moveSet.Standing, 0.0f, 0.0f);
             }
+            ClampToScreen(screenWidth, screenHeight);
             break;
         }
 
         case AIAction::DASH_FORWARD: {
-        if (forwardDashTimer <= 0.0f) {
-            forwardDashTimer = 0.40f;
-            if (std::fabs(dx) > 0.5f) {
-                forwardDashDirX = (dx > 0.0f) ? 1.0f : -1.0f;
+            if (dist > 0.0001f) {
+                moveDir = { dx / dist, dy / dist };
+                if (std::fabs(dx) > 0.5f) {
+                    flipX = (targetPos.x < enemyCenter.x);
+                }
+                float vx = moveDir.x * (speed.x * 2.2f);
+                float vy = moveDir.y * (speed.y * 2.2f);
+                RunMove(moveSet.BackWard, vx, vy);
             } else {
-                forwardDashDirX = flipX ? -1.0f : 1.0f;
+                moveDir = { 0.0f, 0.0f };
+                RunMove(moveSet.Standing, 0.0f, 0.0f);
             }
-        }
-        forwardDashTimer -= GetFrameTime();
-
-        if (std::fabs(forwardDashDirX) > 0.0001f) {
-            flipX = (forwardDashDirX < 0.0f);
-
-            float vx = forwardDashDirX * dashSpeed.x;
-            float vy = dirY * dashSpeed.y * 0.5f;
-
-            RunMove(moveSet.BackWard, vx, vy);
             ClampToScreen(screenWidth, screenHeight);
-        } else {
-            forwardDashTimer = 0.0f;
-            StandIdle(screenWidth, screenHeight);
-        }
-
-        if (forwardDashTimer <= 0.0f) {
-            forwardDashTimer = 0.0f;
-            forwardDashDirX = 0.0f;
-            FaceTarget(targetPos);
-            decisionTimer = 0.0f;
-        }
-        break;
-        }
-
-        case AIAction::RETREAT:
-            forwardDashTimer = 0.0f;
-            forwardDashDirX = 0.0f;
-            pendingPostAttackRetreat = false;
-            consecutiveAttacks = 0;
-
-            DashBackward(-dirX, -dirY, screenWidth, screenHeight);
-            currentAction = AIAction::IDLE;
             break;
+        }
+
+        case AIAction::RETREAT: {
+            float awayX = enemyCenter.x - targetPos.x;
+            float awayY = enemyCenter.y - targetPos.y;
+            float awayLen = std::sqrt(awayX * awayX + awayY * awayY);
+            if (awayLen > 0.0001f) {
+                moveDir = { awayX / awayLen, awayY / awayLen };
+                if (std::fabs(dx) > 0.5f) {
+                    flipX = (targetPos.x < enemyCenter.x);
+                }
+                float vx = moveDir.x * (speed.x * 1.4f);
+                float vy = moveDir.y * (speed.y * 1.4f);
+                RunMove(moveSet.BackWard, vx, vy);
+            } else {
+                moveDir = { 0.0f, 0.0f };
+                RunMove(moveSet.Standing, 0.0f, 0.0f);
+            }
+            ClampToScreen(screenWidth, screenHeight);
+
+            // Si ya pegó contra un borde, cortamos el retroceso para no quedarse patinando ahí
+            if (CPUPosition.x <= 0.0f ||
+                CPUPosition.x >= (float)screenWidth - size.x ||
+                CPUPosition.y <= 0.0f ||
+                CPUPosition.y >= (float)screenHeight - size.y) {
+                actionDurationTimer = 0.0f;
+            }
+            break;
+        }
 
         case AIAction::ATTACK_LIGHT:
         case AIAction::ATTACK_HEAVY: {
-            forwardDashTimer = 0.0f;
-            forwardDashDirX = 0.0f;
-            if (consecutiveAttacks < maxConsecutiveAttacks) {
-                consecutiveAttacks++;
-            }
-
-            lastTargetPos = targetPos;
-            float aimDx = targetPos.x - CPUPosition.x;
-            float aimDy = targetPos.y - CPUPosition.y;
-
-            // Ajuste vertical suave hacia targetPos.y para que el golpe lateral conecte mejor
-            const float maxAlignStepY = 18.0f;
-            float alignY = aimDy;
-            if (alignY > maxAlignStepY) alignY = maxAlignStepY;
-            if (alignY < -maxAlignStepY) alignY = -maxAlignStepY;
-            CPUPosition.y += alignY;
-            position = CPUPosition;
+            moveDir = { 0.0f, 0.0f };
+            FaceTarget(targetPos);
+            RunMove(moveSet.Punch, 0.0f, 0.0f);
             ClampToScreen(screenWidth, screenHeight);
-
-            // Decide si tras este primer golpe retrocederá (Caso 1: golpe -> retroceso)
-            int retreatAfterHitChance = 0;
-            if (currentDifficulty == Difficulty::EASY) retreatAfterHitChance = 15;
-            else if (currentDifficulty == Difficulty::MEDIUM) retreatAfterHitChance = 40;
-            else retreatAfterHitChance = 55;
-
-            pendingPostAttackRetreat = (consecutiveAttacks == 1) && ((std::rand() % 100) < retreatAfterHitChance);
-
-            if (std::fabs(aimDx) > 0.5f) {
-                flipX = (aimDx < 0.0f);
-            }
-            cpuCombat.SetCurrentMove(nullptr);
-            AttackPunch(screenWidth, screenHeight);
-            currentAction = AIAction::IDLE;
             break;
         }
 
         case AIAction::BLOCK:
-            forwardDashTimer = 0.0f;
-            forwardDashDirX = 0.0f;
+        case AIAction::IDLE:
+        default: {
+            moveDir = { 0.0f, 0.0f };
             FaceTarget(targetPos);
-            StandIdle(screenWidth, screenHeight);
-            currentAction = AIAction::IDLE;
+            RunMove(moveSet.Standing, 0.0f, 0.0f);
+            ClampToScreen(screenWidth, screenHeight);
             break;
+        }
     }
 }
 
-void EnemyAI::UpdateFrame(int screenWidth, int screenHeight) {
-    if (isAttacking) {
-        RunMove(moveSet.Punch, 0.0f, 0.0f);
-        ClampToScreen(screenWidth, screenHeight);
-        return;
-    }
-
-    if (isBacking) {
-        RunMove(moveSet.BackWard, activeBackVel.x, activeBackVel.y);
-        ClampToScreen(screenWidth, screenHeight);
-        return;
-    }
-
-    RunMove(cpuCombat.GetCurrentMove() ? cpuCombat.GetCurrentMove() : moveSet.Standing, 0.0f, 0.0f);
-    ClampToScreen(screenWidth, screenHeight);
-}
-
-void EnemyAI::MoveUp(int screenWidth, int screenHeight) {
-    if (isAttacking || isBacking) {
-        UpdateFrame(screenWidth, screenHeight);
-        return;
-    }
-    RunMove(moveSet.WalkUP, 0.0f, -speed.y);
-    ClampToScreen(screenWidth, screenHeight);
-}
-
-void EnemyAI::MoveDown(int screenWidth, int screenHeight) {
-    if (isAttacking || isBacking) {
-        UpdateFrame(screenWidth, screenHeight);
-        return;
-    }
-    RunMove(moveSet.WalkDown, 0.0f, speed.y);
-    ClampToScreen(screenWidth, screenHeight);
-}
-
-void EnemyAI::MoveLeft(int screenWidth, int screenHeight) {
-    if (isAttacking || isBacking) {
-        UpdateFrame(screenWidth, screenHeight);
-        return;
-    }
-    flipX = true;
-    RunMove(moveSet.Walk, -speed.x, 0.0f);
-    ClampToScreen(screenWidth, screenHeight);
-}
-
-void EnemyAI::MoveRight(int screenWidth, int screenHeight) {
-    if (isAttacking || isBacking) {
-        UpdateFrame(screenWidth, screenHeight);
-        return;
-    }
-    flipX = false;
-    RunMove(moveSet.Walk, speed.x, 0.0f);
-    ClampToScreen(screenWidth, screenHeight);
-}
-
-void EnemyAI::AttackPunch(int screenWidth, int screenHeight) {
-    if (isBacking) {
-        UpdateFrame(screenWidth, screenHeight);
-        return;
-    }
-    isAttacking = true;
-    RunMove(moveSet.Punch, 0.0f, 0.0f);
-    ClampToScreen(screenWidth, screenHeight);
-}
-
-void EnemyAI::DashBackward(float dirX, float dirY, int screenWidth, int screenHeight) {
-    if (isAttacking) {
-        UpdateFrame(screenWidth, screenHeight);
-        return;
-    }
-    if (dirX < 0.0f) flipX = true;
-    else if (dirX > 0.0f) flipX = false;
-
-    activeBackVel = {dirX * dashSpeed.x, dirY * dashSpeed.y};
-    isBacking = true;
-    RunMove(moveSet.BackWard, activeBackVel.x, activeBackVel.y);
-    ClampToScreen(screenWidth, screenHeight);
-}
-
-void EnemyAI::StandIdle(int screenWidth, int screenHeight) {
-    if (isAttacking || isBacking) {
-        UpdateFrame(screenWidth, screenHeight);
-        return;
-    }
-    RunMove(moveSet.Standing, 0.0f, 0.0f);
-    ClampToScreen(screenWidth, screenHeight);
+void EnemyAI::TakeDamage(float amount) {
+    float finalDamage = amount * damageMultiplier;
+    health -= finalDamage;
+    if (health < 0.0f) health = 0.0f;
 }

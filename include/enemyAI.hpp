@@ -43,38 +43,37 @@ struct DecisionKey {
 
 class EnemyAI {
 private:
+    Vector2 CPUPosition;
     Vector2 position;
-    Vector2 speed;
-    Vector2 dashSpeed;
-    Vector2 activeBackVel = { 0.0f, 0.0f };
-    Vector2 size;
     Vector2 lastTargetPos = { 0.0f, 0.0f };
+    Vector2 speed;
+    Vector2 size;
+    Vector2 moveDir = { 0.0f, 0.0f };
 
-    float attackRange = 135.0f;
-    float alertRange = 520.0f;
+    float health = 100.0f;
+    float maxHealth = 100.0f;
+    float damageMultiplier = 1.0f;
+
     AIAction currentAction = AIAction::IDLE;
-    float decisionTimer = 0.0f;
-    float decisionInterval = 0.25f;
+    float attackRange = 70.0f;
+    float alertRange = 600.0f;
 
-    Difficulty currentDifficulty = Difficulty::MEDIUM;
+    float reactionTimer = 0.0f;
+    float reactionDelay = 0.25f;
+    float actionDurationTimer = 0.0f;
+
     int playerAttackCounter = 0;
-    int consecutiveAttacks = 0;
-    const int maxConsecutiveAttacks = 2;
-    bool pendingPostAttackRetreat = false;
-    float forwardDashTimer;
-    float forwardDashDirX;
+    Difficulty currentDifficulty = Difficulty::MEDIUM;
 
+    // Sistema de movimiento y animaciones actual
     MoveSetData moveSetData;
     MoveSetBase moveSet;
-    CombatManager cpuCombat{nullptr, nullptr, CombatMode::UnArmed};
+    CombatManager cpuCombat{ nullptr, nullptr, CombatMode::UnArmed };
 
     int depthSwapStart = 0;
     int depthSwapEnd = 0;
     float rotation = 0.0f;
     bool flipX = false;
-
-    bool isAttacking = false;
-    bool isBacking = false;
 
     MTreeNode<DecisionKey>* decisionTreeRoot = nullptr;
 
@@ -83,7 +82,6 @@ private:
     MTreeNode<DecisionKey>* BuildHardTree();
     MTreeNode<DecisionKey>* BuildDecisionTree(Difficulty diff);
 
-    void HandlePostAttack(int screenWidth, int screenHeight);
     void ClampToScreen(int screenWidth, int screenHeight);
     void RunMove(Move* targetMove, float dx, float dy);
     void FaceTarget(Vector2 targetPos);
@@ -92,28 +90,19 @@ public:
     EnemyAI(float startX, float startY, AssetManager& assets, Difficulty diff = Difficulty::MEDIUM);
     ~EnemyAI();
 
-    // Evalúa el árbol de decisiones y actualiza/ejecuta el movimiento del enemigo
     void Update(Vector2 targetPos, bool isTargetAttacking, int screenWidth, int screenHeight);
-    AIAction EvaluateTree(Vector2 targetPos, bool isTargetAttacking) const;
+    AIAction EvaluateTree(Vector2 targetPos, bool isTargetAttacking);
+    void ExecuteAction(AIAction action, Vector2 targetPos, float dt, int screenWidth, int screenHeight);
 
-    // Ejecuta una acción simple en función de la posición del objetivo
-    void ExecuteAction(AIAction action, Vector2 targetPos, int screenWidth, int screenHeight);
-
-    // Movimientos básicos directos (útiles para pruebas o llamadas puntuales)
-    void MoveUp(int screenWidth, int screenHeight);
-    void MoveDown(int screenWidth, int screenHeight);
-    void MoveLeft(int screenWidth, int screenHeight);
-    void MoveRight(int screenWidth, int screenHeight);
-    void AttackPunch(int screenWidth, int screenHeight);
-    void DashBackward(float dirX, float dirY, int screenWidth, int screenHeight);
-    void StandIdle(int screenWidth, int screenHeight);
-
-    void UpdateFrame(int screenWidth, int screenHeight);
+    void TakeDamage(float amount);
+    bool IsDead() const { return health <= 0.0f; }
 
     Vector2 GetPosition() const { return position; }
+    float GetHealth() const { return health; }
+    float GetMaxHealth() const { return maxHealth; }
+    float GetDamageMultiplier() const { return damageMultiplier; }
     AIAction GetCurrentAction() const { return currentAction; }
     Difficulty GetDifficulty() const { return currentDifficulty; }
-    bool IsBusy() const { return isAttacking || isBacking; }
 };
 
 #endif

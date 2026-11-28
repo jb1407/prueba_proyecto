@@ -14,6 +14,7 @@ SRC = src/main.cpp \
       src/Mechanics.cpp \
       src/PlayerAndWeapons.cpp \
 	  src/enemyAI.cpp \
+	  src/hitbox.cpp \
       $(shell find src/DESIGNAR -name "*.cpp" -not -path "*/samples/*" -not -path "*/tests/*")
 
 OBJ = $(SRC:.cpp=.o)

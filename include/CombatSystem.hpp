@@ -14,7 +14,7 @@ class MoveSetData
     MoveSetData& operator=(const MoveSetData&) = delete;
 
     MoveSetBase CharacterMoveSetDefault(AssetManager&, Vector2*); //Está preparado para recibir tanto el vector del jugador como el del Bot
-    MoveSetWeapons NeonSwordRedMoves(AssetManager&);
+    MoveSetWeapons NeonSwordRedMoves(AssetManager&, Vector2*, Vector2*, Vector2*);
 
     ~MoveSetData();
 };
@@ -38,20 +38,21 @@ class Combat //Las animaciones tienen multiples propiedades. Las mismas asi como
 
     bool IsBackward = false;
     Vector2 DashVelocity = {8, 8};
+
     public:
     Combat() = delete;
     Combat(const Combat&) = delete;
     Combat& operator=(const Combat&) = delete;
 
     Combat(Player*, int, int, bool, float, bool, int);
-    
+
     void SetDepthSwapStart(int);
     void SetDepthSwapEnd(int);
     void SetMoveEnd(bool);
     void SetFrameMoveEnd(int);
     void SetFlipX(bool);
     void SetRotation(float);
-    
+
     int GetDepthSwapStart() const;
     int GetDepthSwapEnd() const;
     bool GetMoveEnd() const;
@@ -60,5 +61,6 @@ class Combat //Las animaciones tienen multiples propiedades. Las mismas asi como
     float GetRotation() const;
 
     void UpdateMoveBasePlayer1();
+    void UpdateMoveNSRPlayer1();
 };
 #endif

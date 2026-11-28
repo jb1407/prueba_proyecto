@@ -1,8 +1,8 @@
 #include "LoadAssets.hpp"
 
-//Definiciones de AssetManager
+// Definiciones de AssetManager
 
-AssetManager::AssetManager(size_t cap) : table(cap, AssetComparator{}, [](const AssetEntry& entry) {return Designar::super_fast_hash(entry.key);}){}
+AssetManager::AssetManager(size_t cap) : table(cap, AssetComparator{}, [](const AssetEntry& entry) { return Designar::super_fast_hash(entry.key); }) {}
 
 void AssetManager::insert(const std::string& _Key, const Animation& _anim)
 {
@@ -13,9 +13,9 @@ void AssetManager::insert(const std::string& _Key, const Animation& _anim)
 Animation* AssetManager::Search(const std::string& _Key)
 {
     // Búsqueda heterogénea eficiente provista por openhash.hpp
-    AssetEntry* entry = table.search_by(_Key, [](const std::string& k) {return Designar::super_fast_hash(k);});
+    AssetEntry* entry = table.search_by(_Key, [](const std::string& k) { return Designar::super_fast_hash(k); });
 
-    if (entry != nullptr) {return &(entry->animation);}
+    if (entry != nullptr) { return &(entry->animation); }
 
     return nullptr;
 }
@@ -23,17 +23,16 @@ Animation* AssetManager::Search(const std::string& _Key)
 AssetManager::~AssetManager()
 {
     // Iteramos sobre los elementos ocupados para liberar las texturas de la GPU en Raylib
-    for (AssetEntry& entry : table) 
+    for (AssetEntry& entry : table)
     {
         UnloadTexture(entry.animation.texture);
     }
 }
 
-//Carga de assets
+// Carga de assets
 void LoadAssetsToTable(AssetManager& manager)
 {
-    // Cargar animaciones base del personaje
-    //CAMBIOS EN ESCALAS DEL ASSET
+    // Cargar animaciones base del personaje (escala base de tu rama)
     Image Img = LoadImage("assets/sprites/character/C_MoveSet_Base/C_Backward/C_Backward.png");
     manager.insert("C_Backward", LoadAsset(Img, 9, 2, 1.0f));
 
@@ -51,39 +50,55 @@ void LoadAssetsToTable(AssetManager& manager)
 
     Img = LoadImage("assets/sprites/character/C_MoveSet_Base/C_Punch/C_Punch.png");
     manager.insert("C_Punch", LoadAsset(Img, 10, 1, 1.0f));
-    //////////
 
-    // Cargar animaciones de las armas
-    //Neon Sword Red
+    // Cargar animaciones de las armas - Neon Sword Red
     Img = LoadImage("assets/sprites/character/Weapons/NSR/NeonSwordRed.png");
-    manager.insert("NeonSwordRed", LoadAsset(Img, 1, 1, 1.0f));
+    manager.insert("NeonSwordRed", LoadAsset(Img, 1, 1, 0.5f));
 
     Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Normal1(Character).png");
-    manager.insert("NSR_Normal1(Character)", LoadAsset(Img, 9, 4, 2.0f));
+    manager.insert("NSR_Normal1(Character)", LoadAsset(Img, 9, 1, 1.0f));
 
     Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Normal1(Sword).png");
-    manager.insert("NSR_Normal1(Sword)", LoadAsset(Img, 9, 4, 1.5f));
+    manager.insert("NSR_Normal1(Sword)", LoadAsset(Img, 9, 1, 0.15f));
 
     Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Normal2(Character).png");
-    manager.insert("NSR_Normal2(Character)", LoadAsset(Img, 19, 2, 2.0f));
+    manager.insert("NSR_Normal2(Character)", LoadAsset(Img, 19, 1, 1.0f));
 
     Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Normal2(Sword).png");
-    manager.insert("NSR_Normal2(Sword)", LoadAsset(Img, 19, 2, 1.5f));
+    manager.insert("NSR_Normal2(Sword)", LoadAsset(Img, 19, 1, 1.75f));
 
     Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Special1(Character).png");
-    manager.insert("NSR_Special1(Character)", LoadAsset(Img, 18, 3, 1.0f));
+    manager.insert("NSR_Special1(Character)", LoadAsset(Img, 18, 2, 1.0f));
 
     Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Special1(Sword).png");
-    manager.insert("NSR_Special1(Sword)", LoadAsset(Img, 18, 3, 1.5f));
+    manager.insert("NSR_Special1(Sword)", LoadAsset(Img, 18, 2, 1.25f));
 
     Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Special1(Circle).png");
-    manager.insert("NSR_Special1(Circle)", LoadAsset(Img, 26, 3, 1.0f));
+    manager.insert("NSR_Special1(Circle)", LoadAsset(Img, 26, 1, 1.0f));
+
+    Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Special2(Character).png");
+    manager.insert("NSR_Special2(Character)", LoadAsset(Img, 25, 2, 1.0f));
+
+    Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Special2(Sword).png");
+    manager.insert("NSR_Special2(Sword)", LoadAsset(Img, 25, 2, 1.0f));
+
+    Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Special2(Courteous).png");
+    manager.insert("NSR_Special2(Courteous)", LoadAsset(Img, 25, 1, 1.0f));
+
+    Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Ultimate(Character).png");
+    manager.insert("NSR_Ultimate(Character)", LoadAsset(Img, 18, 5, 1.0f));
+
+    Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Ultimate(Sword).png");
+    manager.insert("NSR_Ultimate(Sword)", LoadAsset(Img, 18, 5, 0.5f));
+
+    Img = LoadImage("assets/sprites/character/Weapons/NSR/NSR_Ultimate(Cinematic).png");
+    manager.insert("NSR_Ultimate(Cinematic)", LoadAsset(Img, 44, 2, 1.5f));
 }
 
 Animation LoadAsset(Image& img, int TextureFrames, int FrameSpeed, float ScaleModifier)
 {
     // Ahora el tamaño base se multiplica por el modificador (ej: 0.5 para armas)
-    float HeightObj = ((float)GetScreenHeight() / 4) * ScaleModifier; 
+    float HeightObj = ((float)GetScreenHeight() / 4) * ScaleModifier;
 
     float Scale = HeightObj / (float)img.height;
     float NewWidth = (float)(img.width * Scale);
@@ -95,7 +110,7 @@ Animation LoadAsset(Image& img, int TextureFrames, int FrameSpeed, float ScaleMo
 
     UnloadImage(img);
 
-    Animation Anim = {AnimTexture, TextureFrames, (float)AnimTexture.width/TextureFrames, (float)AnimTexture.height, FrameSpeed};
+    Animation Anim = {AnimTexture, TextureFrames, (float)AnimTexture.width / TextureFrames, (float)AnimTexture.height, FrameSpeed};
 
     return Anim;
 }
